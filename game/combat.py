@@ -14,7 +14,7 @@ from game.synergy import SynergyResult, compute_synergy
 MAX_TURNS = 50
 
 
-FLAT_STAT_FIELDS = {"hp", "mp", "atk_phys", "atk_magic", "def_phys", "def_magic", "crit_chance", "crit_damage"}
+FLAT_STAT_FIELDS = {"hp", "atk_phys", "atk_magic", "def_phys", "def_magic", "crit_chance", "crit_damage"}
 
 
 def _apply_equipment_bonuses(stats: Stats, character: Character) -> Stats:

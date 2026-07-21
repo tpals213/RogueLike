@@ -15,7 +15,7 @@ from game.mapgen import generate_act_map, render_map
 from game.models import EQUIPMENT_SLOTS
 from game.relics import compute_relic_modifiers
 from game.save_system import load_meta, save_meta
-from game.shop import generate_shop_offer
+from game.shop import REROLL_COST, build_shop_entries, generate_shop_offer, refill_sold_entries
 from game.synergy import SYNERGY_TAGS
 
 SAVE_PATH = Path(__file__).parent / "saves" / "meta_save.json"
@@ -40,6 +40,34 @@ _TYPE_LABEL = {
 def _grant_relic(character, relic):
     character.relics.append(relic)
     print(f"[유물 획득] {relic.name} - {relic.description}")
+
+
+def _choose_item_reward(character, pool, auto):
+    choices = random.sample(pool, min(3, len(pool)))
+    skip_idx = len(choices) + 1
+    print("[아이템 선택] 처치 보상으로 다음 중 하나를 고르세요:")
+    for idx, item in enumerate(choices, start=1):
+        print(f"  {idx}. [{item.slot}/{item.rarity}] {item.name} {item.stat_bonus} 태그:{item.tags}")
+    print(f"  {skip_idx}. 받지 않고 넘어가기")
+
+    if auto:
+        pick_idx = random.randrange(skip_idx) + 1
+        print(f"(자동 선택) -> {'받지 않고 넘어가기' if pick_idx == skip_idx else choices[pick_idx - 1].name}")
+    else:
+        while True:
+            raw = input("> ").strip()
+            if raw.isdigit() and 1 <= int(raw) <= skip_idx:
+                pick_idx = int(raw)
+                break
+            print("올바른 번호를 입력하세요.")
+
+    if pick_idx == skip_idx:
+        print("[아이템 선택] 아이템을 받지 않고 넘어갑니다.")
+        return
+
+    pick = choices[pick_idx - 1]
+    character.equip(pick)
+    print(f"[아이템 획득] {pick.name} 장착 완료")
 
 
 def _choose_boss_relic(character, auto):
@@ -92,9 +120,13 @@ def resolve_combat(character, state, tier, auto):
     if tier == "normal":
         state["gold"] += GOLD_BASE["normal"] * act
         state["diamond"] += DIAMOND_BASE["normal"] * act
+        common_pool = [i for i in SAMPLE_ITEMS if i.rarity == "common"]
+        _choose_item_reward(character, common_pool, auto)
     elif tier == "elite":
         state["gold"] += GOLD_BASE["elite"] * act
         state["diamond"] += DIAMOND_BASE["elite"] * act
+        rare_pool = [i for i in SAMPLE_ITEMS if i.rarity == "rare"]
+        _choose_item_reward(character, rare_pool, auto)
         _grant_relic(character, random.choice(RELIC_POOL))
     elif tier == "boss":
         state["diamond"] += DIAMOND_BASE["elite"] * act * 2
@@ -194,43 +226,69 @@ def resolve_well(character, state, auto):
 
 def resolve_shop(character, state, auto):
     offer = generate_shop_offer(character)
-    entries = [("item", item, price) for item, price in offer.items] + [("relic", relic, price) for relic, price in offer.relics]
-
-    print(f"[상점] 보유 골드: {state['gold']}G")
-    for idx, (kind, obj, price) in enumerate(entries, start=1):
-        if kind == "item":
-            print(f"  {idx}. [장비/{obj.slot}] {obj.name} ({obj.rarity}, {obj.tags}) - {price}G")
-        else:
-            print(f"  {idx}. [유물] {obj.name} - {obj.description} - {price}G")
-    print("  0. 나가기")
+    entries = build_shop_entries(offer)
 
     while True:
-        affordable = [i for i, (_, _, price) in enumerate(entries, start=1) if price <= state["gold"]]
+        print(f"[상점] 보유 골드: {state['gold']}G")
+        for idx, entry in enumerate(entries, start=1):
+            obj = entry["obj"]
+            sold_tag = " [품절]" if entry["sold"] else ""
+            if entry["kind"] == "item":
+                print(f"  {idx}. [장비/{obj.slot}] {obj.name} ({obj.rarity}, {obj.tags}) - {entry['price']}G{sold_tag}")
+            else:
+                print(f"  {idx}. [유물] {obj.name} - {obj.description} - {entry['price']}G{sold_tag}")
+        print(f"  R. 리롤 (품절 슬롯을 새 아이템으로 채움) - {REROLL_COST}G")
+        print("  0. 나가기")
+
+        buyable = [i for i, e in enumerate(entries) if not e["sold"] and e["price"] <= state["gold"]]
+        sold_exists = any(e["sold"] for e in entries)
+
         if auto:
-            if not affordable or random.random() < 0.3:
-                print("(자동) 상점을 나갑니다.")
-                return
-            choice = random.choice(affordable)
+            roll = random.random()
+            if sold_exists and state["gold"] >= REROLL_COST and roll < 0.2:
+                raw = "r"
+            elif not buyable or roll < 0.3:
+                raw = "0"
+            else:
+                raw = str(random.choice(buyable) + 1)
         else:
             raw = input("> ").strip()
-            if raw == "0":
-                return
-            if not raw.isdigit() or not (1 <= int(raw) <= len(entries)):
-                print("올바른 번호를 입력하세요.")
-                continue
-            choice = int(raw)
-            if choice not in affordable:
-                print("골드가 부족합니다.")
-                continue
 
-        kind, obj, price = entries[choice - 1]
-        state["gold"] -= price
-        if kind == "item":
-            character.equip(obj)
-            print(f"구매: {obj.name} 장착 완료 (남은 골드 {state['gold']}G)")
+        if raw == "0":
+            return
+
+        if raw.lower() == "r":
+            if not sold_exists:
+                print("[상점] 품절된 아이템이 없어 리롤할 필요가 없습니다.")
+                continue
+            if state["gold"] < REROLL_COST:
+                print("[상점] 골드가 부족합니다.")
+                continue
+            state["gold"] -= REROLL_COST
+            refill_sold_entries(entries)
+            print(f"[상점] 리롤 완료 (남은 골드 {state['gold']}G)")
+            continue
+
+        if not raw.isdigit() or not (1 <= int(raw) <= len(entries)):
+            print("올바른 번호를 입력하세요.")
+            continue
+
+        entry = entries[int(raw) - 1]
+        if entry["sold"]:
+            print("[상점] 이미 품절된 아이템입니다.")
+            continue
+        if entry["price"] > state["gold"]:
+            print("골드가 부족합니다.")
+            continue
+
+        state["gold"] -= entry["price"]
+        entry["sold"] = True
+        if entry["kind"] == "item":
+            character.equip(entry["obj"])
+            print(f"구매: {entry['obj'].name} 장착 완료 (남은 골드 {state['gold']}G)")
         else:
-            character.relics.append(obj)
-            print(f"구매: {obj.name} 획득 (남은 골드 {state['gold']}G)")
+            character.relics.append(entry["obj"])
+            print(f"구매: {entry['obj'].name} 획득 (남은 골드 {state['gold']}G)")
 
 
 def resolve_event(character, state, auto):

@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 @dataclass
 class Stats:
     hp: int
-    mp: int
     atk_phys: int
     atk_magic: int
     def_phys: int

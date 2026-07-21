@@ -23,8 +23,8 @@ from game.mapgen import generate_act_map
 from game.models import EQUIPMENT_SLOTS
 from game.relics import compute_relic_modifiers
 from game.save_system import load_meta, save_meta
-from game.shop import generate_shop_offer
-from game.synergy import SYNERGY_TAGS, TAG_LABEL, describe_active_synergies, describe_synergy_progress
+from game.shop import REROLL_COST, build_shop_entries, generate_shop_offer, refill_sold_entries
+from game.synergy import SYNERGY_TAGS, TAG_LABEL, TIERS, describe_active_synergies
 
 SAVE_PATH = Path(__file__).parent / "saves" / "meta_save.json"
 
@@ -37,19 +37,33 @@ KOREAN_FONT_CANDIDATES = [
 ]
 TILE_W, TILE_H = 14, 18
 
-SCREEN_W, SCREEN_H = 100, 58
+SCREEN_W, SCREEN_H = 100, 70
 
-MAP_Y0, MAP_H = 4, 11
-SYN_Y0, SYN_H = 16, 7
-PROMPT_Y0, PROMPT_H = 24, 16
-LOG_Y0, LOG_H = 41, 16
+EQUIP_Y0, EQUIP_H = 2, 9
+MAP_Y0, MAP_H = 12, 11
+SYN_Y0, SYN_H = 24, 7
+RELIC_Y0, RELIC_H = 32, 9
+PROMPT_Y0, PROMPT_H = 42, 14
+LOG_Y0, LOG_H = 57, 12
 
 WHITE = (235, 235, 235)
 DIM = (100, 100, 100)
 GOLD = (255, 215, 60)
 RED = (230, 70, 70)
 GREEN = (110, 220, 110)
+PRISM = (235, 120, 245)
 LINE_DIM = (150, 150, 165)
+
+# 시너지 태그별 고유 색상 (장비 태그 표시용)
+TAG_COLOR = {
+    "poison": (140, 220, 120),
+    "fire": (255, 140, 80),
+    "berserker": (255, 90, 90),
+    "ice": (140, 200, 255),
+    "mana": (190, 140, 255),
+}
+# 시너지 발동 티어별 색상 (오토체스 등급 색상 참고: 초록<금색<프리즘)
+TIER_COLOR = {0: DIM, 3: GREEN, 5: GOLD, 7: PRISM}
 
 TYPE_GLYPH = {
     "normal": ("n", (210, 210, 210)),
@@ -71,7 +85,7 @@ SLOT_LABEL = {
     "boots": "신발", "necklace": "목걸이", "ring": "반지",
 }
 STAT_LABEL = {
-    "hp": "HP", "mp": "MP", "atk_phys": "물공", "atk_magic": "마공",
+    "hp": "HP", "atk_phys": "물공", "atk_magic": "마공",
     "def_phys": "물방", "def_magic": "마방", "crit_chance": "크리율",
     "crit_damage": "크리뎀", "cooldown_reduction": "쿨감", "shield": "보호막",
 }
@@ -144,32 +158,77 @@ class Screen:
 
     def draw_equipment(self, character):
         c = self.console
-        x, y = 2, 2
-        c.print(x, y, "장비 ", fg=WHITE)
-        x += 5
+        c.draw_frame(0, EQUIP_Y0, SCREEN_W, EQUIP_H, title="장비 (슬롯별 아이템의 시너지 태그)", fg=WHITE, bg=(0, 0, 0))
+        y = EQUIP_Y0 + 1
         for slot in EQUIPMENT_SLOTS:
-            filled = slot in character.equipment
-            text = f"{SLOT_LABEL[slot]}{'●' if filled else '○'} "
-            c.print(x, y, text, fg=GREEN if filled else DIM)
-            x += len(text)
+            item = character.equipment.get(slot)
+            x = 2
+            c.print(x, y, f"{SLOT_LABEL[slot]:<4}", fg=WHITE)
+            x += 5
+            if item is None:
+                c.print(x, y, "(비어있음)", fg=DIM)
+            else:
+                grade = "희귀" if item.rarity == "rare" else "일반"
+                label = f"{item.name} ({grade})"
+                c.print(x, y, f"{label:<22}", fg=GREEN if item.rarity == "rare" else WHITE)
+                x += 23
+                for tag in item.tags:
+                    pip = f"[{TAG_LABEL[tag]}]"
+                    c.print(x, y, pip, fg=TAG_COLOR[tag])
+                    x += len(pip) + 1
+            y += 1
 
     def draw_synergy(self, character):
         c = self.console
-        c.draw_frame(0, SYN_Y0, SCREEN_W, SYN_H, title="활성 시너지 (3스택 이상)", fg=WHITE, bg=(0, 0, 0))
+        c.draw_frame(0, SYN_Y0, SCREEN_W, SYN_H, title="시너지 (5종 전체, 발동 여부 무관하게 표시)", fg=WHITE, bg=(0, 0, 0))
         tags = character.equipped_tags()
-        lines = describe_active_synergies(tags)
-        if not lines:
-            progress = describe_synergy_progress(tags)
-            if progress:
-                c.print(2, SYN_Y0 + 1, f"발동된 시너지 없음 (진행중: {progress})", fg=GOLD)
-            else:
-                c.print(2, SYN_Y0 + 1, "없음 - 같은 태그 3개 이상 장착 시 발동", fg=DIM)
-        else:
-            for i, line in enumerate(lines):
-                y = SYN_Y0 + 1 + i
-                if y >= SYN_Y0 + SYN_H - 1:
+        active_lines = describe_active_synergies(tags)
+        y = SYN_Y0 + 1
+        for tag in SYNERGY_TAGS:
+            label = TAG_LABEL[tag]
+            count = tags.count(tag)
+            tier = 0
+            for t in TIERS:
+                if count >= t:
+                    tier = t
                     break
-                c.print(2, y, line[: SCREEN_W - 4], fg=WHITE)
+
+            if tier:
+                line = next((l for l in active_lines if l.startswith(f"[{label} ")), f"[{label} {tier}] 발동")
+            else:
+                line = f"[{label} {count}/3] 미발동 (같은 태그 3개 이상 장착 시 발동)"
+
+            color = TIER_COLOR[tier] if tier or count == 0 else WHITE
+            c.print(2, y, line[: SCREEN_W - 4], fg=color)
+            y += 1
+
+    def draw_relics(self, character):
+        c = self.console
+        relics = character.relics
+        title = f"보유 유물 ({len(relics)}개)" if relics else "보유 유물"
+        c.draw_frame(0, RELIC_Y0, SCREEN_W, RELIC_H, title=title, fg=WHITE, bg=(0, 0, 0))
+        if not relics:
+            c.print(2, RELIC_Y0 + 1, "없음", fg=DIM)
+            return
+
+        inner_h = RELIC_H - 2
+        col_w = (SCREEN_W - 6) // 2
+        capacity = inner_h * 2
+        overflow = len(relics) > capacity
+        shown = relics[: capacity - 1] if overflow else relics
+
+        for i, relic in enumerate(shown):
+            col, row = divmod(i, inner_h)
+            x = 2 + col * (col_w + 2)
+            y = RELIC_Y0 + 1 + row
+            c.print(x, y, f"{relic.name} - {relic.description}"[:col_w], fg=GOLD)
+
+        if overflow:
+            remaining = len(relics) - len(shown)
+            col, row = divmod(len(shown), inner_h)
+            x = 2 + col * (col_w + 2)
+            y = RELIC_Y0 + 1 + row
+            c.print(x, y, f"...외 {remaining}개 더 보유", fg=DIM)
 
     def draw_map(self, act_map, current_id):
         c = self.console
@@ -271,7 +330,8 @@ def wait_continue(render_fn):
             return
 
 
-def prompt_choice(render_fn, count, allow_escape=False):
+def prompt_choice(render_fn, count, allow_escape=False, extra_keys=None):
+    extra_keys = extra_keys or {}
     while True:
         render_fn()
         sym = wait_key()
@@ -279,6 +339,8 @@ def prompt_choice(render_fn, count, allow_escape=False):
             continue
         if allow_escape and sym == tcod.event.KeySym.ESCAPE:
             return None
+        if sym in extra_keys:
+            return extra_keys[sym]
         if tcod.event.KeySym.N1 <= sym <= tcod.event.KeySym.N9:
             idx = sym - tcod.event.KeySym.N1
             if idx < count:
@@ -292,6 +354,7 @@ def make_render_map(screen, character, state, act_map, current_id, options):
         screen.draw_equipment(character)
         screen.draw_map(act_map, current_id)
         screen.draw_synergy(character)
+        screen.draw_relics(character)
         if options:
             labels = [TYPE_LABEL[act_map.nodes[nid].node_type] for nid in options]
             screen.draw_prompt("다음 노드를 선택하세요 (숫자키)", labels)
@@ -309,6 +372,7 @@ def make_render_simple(screen, character, state, title, options, hint=None):
         screen.draw_status(character, state)
         screen.draw_equipment(character)
         screen.draw_synergy(character)
+        screen.draw_relics(character)
         screen.draw_prompt(title, options)
         if hint:
             screen.draw_hint(hint)
@@ -316,6 +380,21 @@ def make_render_simple(screen, character, state, title, options, hint=None):
         screen.present()
 
     return render
+
+
+def _prompt_item_reward(screen, character, state, pool):
+    choices = random.sample(pool, min(3, len(pool)))
+    labels = [
+        f"[{SLOT_LABEL[i.slot]}/{'희귀' if i.rarity == 'rare' else '일반'}] {i.name} - "
+        f"{format_stat_bonus(i.stat_bonus)} [{format_tags(i.tags)}]"
+        for i in choices
+    ]
+    labels.append("받지 않고 넘어가기")
+    render = make_render_simple(screen, character, state, "아이템 선택 (숫자키)", labels)
+    idx = prompt_choice(render, len(labels))
+    if idx == len(labels) - 1:
+        return None
+    return choices[idx]
 
 
 def resolve_combat(screen, character, state, tier, act_map=None, current_id=None):
@@ -356,9 +435,23 @@ def resolve_combat(screen, character, state, tier, act_map=None, current_id=None
     if tier == "normal":
         state["gold"] += 15 * act
         state["diamond"] += 2 * act
+        common_pool = [i for i in SAMPLE_ITEMS if i.rarity == "common"]
+        picked = _prompt_item_reward(screen, character, state, common_pool)
+        if picked is None:
+            log(state, "[아이템 선택] 아이템을 받지 않고 넘어갑니다.")
+        else:
+            character.equip(picked)
+            log(state, f"[아이템 획득] {picked.name} 장착 완료")
     elif tier == "elite":
         state["gold"] += 30 * act
         state["diamond"] += 5 * act
+        rare_pool = [i for i in SAMPLE_ITEMS if i.rarity == "rare"]
+        picked = _prompt_item_reward(screen, character, state, rare_pool)
+        if picked is None:
+            log(state, "[아이템 선택] 아이템을 받지 않고 넘어갑니다.")
+        else:
+            character.equip(picked)
+            log(state, f"[아이템 획득] {picked.name} 장착 완료")
         relic = random.choice(RELIC_POOL)
         character.relics.append(relic)
         log(state, f"[유물 획득] {relic.name} - {relic.description}")
@@ -449,13 +542,18 @@ def resolve_well(screen, character, state):
 
 def resolve_shop(screen, character, state):
     offer = generate_shop_offer(character)
-    entries = [("item", i, p) for i, p in offer.items] + [("relic", r, p) for r, p in offer.relics]
+    entries = build_shop_entries(offer)
 
     while True:
         labels = []
-        for kind, obj, price in entries:
+        for entry in entries:
+            obj = entry["obj"]
+            price = entry["price"]
+            if entry["sold"]:
+                labels.append(f"[품절] {obj.name}")
+                continue
             afford_tag = "" if price <= state["gold"] else " (골드 부족)"
-            if kind == "item":
+            if entry["kind"] == "item":
                 rarity_kr = "희귀" if obj.rarity == "rare" else "일반"
                 effect = format_stat_bonus(obj.stat_bonus)
                 tags_kr = format_tags(obj.tags)
@@ -464,26 +562,50 @@ def resolve_shop(screen, character, state):
                 )
             else:
                 labels.append(f"[유물] {obj.name} - {obj.description} - {price}G{afford_tag}")
-        labels.append("나가기")
 
         render = make_render_simple(
-            screen, character, state, f"상점 (보유 {state['gold']}G)", labels, hint="숫자키로 구매, 마지막 번호로 나가기"
+            screen,
+            character,
+            state,
+            f"상점 (보유 {state['gold']}G)",
+            labels,
+            hint=f"숫자키=구매, R=리롤({REROLL_COST}G, 품절 슬롯 채움), ESC=나가기",
         )
-        idx = prompt_choice(render, len(labels))
-        if idx == len(labels) - 1:
+        idx = prompt_choice(
+            render, len(labels), allow_escape=True, extra_keys={tcod.event.KeySym.r: "reroll"}
+        )
+
+        if idx is None:
             return
 
-        kind, obj, price = entries[idx]
-        if price > state["gold"]:
+        if idx == "reroll":
+            if not any(e["sold"] for e in entries):
+                log(state, "[상점] 품절된 아이템이 없어 리롤할 필요가 없습니다.")
+                continue
+            if state["gold"] < REROLL_COST:
+                log(state, "[상점] 골드가 부족합니다.")
+                continue
+            state["gold"] -= REROLL_COST
+            refill_sold_entries(entries)
+            log(state, f"[상점] 리롤 완료 (남은 골드 {state['gold']}G)")
+            continue
+
+        entry = entries[idx]
+        if entry["sold"]:
+            log(state, "[상점] 이미 품절된 아이템입니다.")
+            continue
+        if entry["price"] > state["gold"]:
             log(state, "[상점] 골드가 부족합니다.")
             continue
-        state["gold"] -= price
-        if kind == "item":
-            character.equip(obj)
-            log(state, f"[상점] 구매: {obj.name} 장착 완료 (남은 골드 {state['gold']}G)")
+
+        state["gold"] -= entry["price"]
+        entry["sold"] = True
+        if entry["kind"] == "item":
+            character.equip(entry["obj"])
+            log(state, f"[상점] 구매: {entry['obj'].name} 장착 완료 (남은 골드 {state['gold']}G)")
         else:
-            character.relics.append(obj)
-            log(state, f"[상점] 구매: {obj.name} 획득 (남은 골드 {state['gold']}G)")
+            character.relics.append(entry["obj"])
+            log(state, f"[상점] 구매: {entry['obj'].name} 획득 (남은 골드 {state['gold']}G)")
 
 
 def resolve_event(screen, character, state, act_map, current_id):

@@ -16,6 +16,7 @@ from game.models import Character, Item, Relic
 COMMON_PRICE = 25
 RARE_PRICE = 55
 RELIC_PRICE = 45
+REROLL_COST = 20  # 품절(구매 완료)된 슬롯을 새 무작위 항목으로 채우는 데 드는 골드
 
 
 @dataclass
@@ -67,3 +68,30 @@ def generate_shop_offer(character: Character) -> ShopOffer:
     priced_relics = [(relic, RELIC_PRICE) for relic in relic_choices]
 
     return ShopOffer(items=priced_items, relics=priced_relics)
+
+
+def build_shop_entries(offer: ShopOffer) -> list[dict]:
+    """ShopOffer를 구매/품절 상태를 담을 수 있는 가변 항목 목록으로 변환한다."""
+    entries = [{"kind": "item", "obj": item, "price": price, "sold": False} for item, price in offer.items]
+    entries += [{"kind": "relic", "obj": relic, "price": price, "sold": False} for relic, price in offer.relics]
+    return entries
+
+
+def refill_sold_entries(entries: list[dict]) -> None:
+    """품절(구매 완료) 처리된 슬롯을 그 자리에서 새 무작위 항목으로 채운다.
+    아직 구매하지 않은 슬롯은 그대로 유지된다."""
+    for entry in entries:
+        if not entry["sold"]:
+            continue
+        current_names = {e["obj"].name for e in entries}
+        if entry["kind"] == "item":
+            pool = [i for i in SAMPLE_ITEMS if i.name not in current_names] or SAMPLE_ITEMS
+            new_obj = random.choice(pool)
+            entry["obj"] = new_obj
+            entry["price"] = RARE_PRICE if new_obj.rarity == "rare" else COMMON_PRICE
+        else:
+            pool = [r for r in RELIC_POOL if r.name not in current_names] or RELIC_POOL
+            new_obj = random.choice(pool)
+            entry["obj"] = new_obj
+            entry["price"] = RELIC_PRICE
+        entry["sold"] = False
