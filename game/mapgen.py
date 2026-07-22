@@ -103,7 +103,8 @@ def generate_act_map(act: int, rng: Optional[random.Random] = None, include_reli
 
     phase_a_layers, shop_used, well_used = _build_phase_a_layers(rng)
     remaining_shop = SHOP_COUNT - shop_used
-    remaining_well = WELL_COUNT - well_used
+    # 보스 직전에 우물 1개를 무조건 배치하므로(아래 pre_boss_well_layer) 그만큼 일반 예산에서 미리 뺀다.
+    remaining_well = max(0, WELL_COUNT - well_used - 1)
 
     relic_layer_types = ["relic_room"] if include_relic_room else []
 
@@ -116,7 +117,14 @@ def generate_act_map(act: int, rng: Optional[random.Random] = None, include_reli
     phase_b_pool = _build_middle_type_pool(middle_count, remaining_shop, remaining_well, rng)
     phase_b_layers = _split_into_layers(phase_b_pool, rng)
 
-    all_type_layers = phase_a_layers + ([relic_layer_types] if relic_layer_types else []) + phase_b_layers
+    # 보스 직전 레이어는 노드 1개짜리 "우물"로 고정 — 다음 레이어 노드가 1개면 이전 레이어의
+    # 모든 노드가 그 하나로 연결되는 기존 간선 로직(아래) 덕분에, 어떤 경로를 타든 이 우물을
+    # 반드시 거쳐야 보스방에 도달한다.
+    pre_boss_well_layer = [["well"]]
+
+    all_type_layers = (
+        phase_a_layers + ([relic_layer_types] if relic_layer_types else []) + phase_b_layers + pre_boss_well_layer
+    )
 
     nodes: dict[int, Node] = {}
     next_id = 0

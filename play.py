@@ -15,7 +15,7 @@ from game.mapgen import generate_act_map, render_map
 from game.models import EQUIPMENT_SLOTS
 from game.relics import compute_relic_modifiers
 from game.save_system import load_meta, save_meta
-from game.shop import REROLL_COST, build_shop_entries, generate_shop_offer, refill_sold_entries
+from game.shop import REROLL_COST, build_shop_entries, generate_shop_offer, reroll_all_entries
 from game.synergy import SYNERGY_TAGS
 
 SAVE_PATH = Path(__file__).parent / "saves" / "meta_save.json"
@@ -225,7 +225,7 @@ def resolve_well(character, state, auto):
 
 
 def resolve_shop(character, state, auto):
-    offer = generate_shop_offer(character)
+    offer = generate_shop_offer(character, state["act"])
     entries = build_shop_entries(offer)
 
     while True:
@@ -237,15 +237,14 @@ def resolve_shop(character, state, auto):
                 print(f"  {idx}. [장비/{obj.slot}] {obj.name} ({obj.rarity}, {obj.tags}) - {entry['price']}G{sold_tag}")
             else:
                 print(f"  {idx}. [유물] {obj.name} - {obj.description} - {entry['price']}G{sold_tag}")
-        print(f"  R. 리롤 (품절 슬롯을 새 아이템으로 채움) - {REROLL_COST}G")
+        print(f"  R. 리롤 (진열 전체를 새로 채움) - {REROLL_COST}G")
         print("  0. 나가기")
 
         buyable = [i for i, e in enumerate(entries) if not e["sold"] and e["price"] <= state["gold"]]
-        sold_exists = any(e["sold"] for e in entries)
 
         if auto:
             roll = random.random()
-            if sold_exists and state["gold"] >= REROLL_COST and roll < 0.2:
+            if state["gold"] >= REROLL_COST and roll < 0.2:
                 raw = "r"
             elif not buyable or roll < 0.3:
                 raw = "0"
@@ -258,14 +257,11 @@ def resolve_shop(character, state, auto):
             return
 
         if raw.lower() == "r":
-            if not sold_exists:
-                print("[상점] 품절된 아이템이 없어 리롤할 필요가 없습니다.")
-                continue
             if state["gold"] < REROLL_COST:
                 print("[상점] 골드가 부족합니다.")
                 continue
             state["gold"] -= REROLL_COST
-            refill_sold_entries(entries)
+            reroll_all_entries(entries, state["act"])
             print(f"[상점] 리롤 완료 (남은 골드 {state['gold']}G)")
             continue
 

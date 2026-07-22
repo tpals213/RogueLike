@@ -23,7 +23,7 @@ from game.mapgen import generate_act_map
 from game.models import EQUIPMENT_SLOTS
 from game.relics import compute_relic_modifiers
 from game.save_system import load_meta, save_meta
-from game.shop import REROLL_COST, build_shop_entries, generate_shop_offer, refill_sold_entries
+from game.shop import REROLL_COST, build_shop_entries, generate_shop_offer, reroll_all_entries
 from game.synergy import SYNERGY_TAGS, TAG_LABEL, TIERS, describe_active_synergies
 
 SAVE_PATH = Path(__file__).parent / "saves" / "meta_save.json"
@@ -84,6 +84,7 @@ SLOT_LABEL = {
     "helmet": "투구", "left_hand": "왼손", "right_hand": "오른손", "armor": "갑옷",
     "boots": "신발", "necklace": "목걸이", "ring": "반지",
 }
+RARITY_LABEL = {"common": "일반", "rare": "희귀", "unique": "유니크", "legendary": "레전더리"}
 STAT_LABEL = {
     "hp": "HP", "atk_phys": "물공", "atk_magic": "마공",
     "def_phys": "물방", "def_magic": "마방", "crit_chance": "크리율",
@@ -168,9 +169,9 @@ class Screen:
             if item is None:
                 c.print(x, y, "(비어있음)", fg=DIM)
             else:
-                grade = "희귀" if item.rarity == "rare" else "일반"
+                grade = RARITY_LABEL.get(item.rarity, item.rarity)
                 label = f"{item.name} ({grade})"
-                c.print(x, y, f"{label:<22}", fg=GREEN if item.rarity == "rare" else WHITE)
+                c.print(x, y, f"{label:<22}", fg=GREEN if item.rarity != "common" else WHITE)
                 x += 23
                 for tag in item.tags:
                     pip = f"[{TAG_LABEL[tag]}]"
@@ -385,7 +386,7 @@ def make_render_simple(screen, character, state, title, options, hint=None):
 def _prompt_item_reward(screen, character, state, pool):
     choices = random.sample(pool, min(3, len(pool)))
     labels = [
-        f"[{SLOT_LABEL[i.slot]}/{'희귀' if i.rarity == 'rare' else '일반'}] {i.name} - "
+        f"[{SLOT_LABEL[i.slot]}/{RARITY_LABEL.get(i.rarity, i.rarity)}] {i.name} - "
         f"{format_stat_bonus(i.stat_bonus)} [{format_tags(i.tags)}]"
         for i in choices
     ]
@@ -541,7 +542,7 @@ def resolve_well(screen, character, state):
 
 
 def resolve_shop(screen, character, state):
-    offer = generate_shop_offer(character)
+    offer = generate_shop_offer(character, state["act"])
     entries = build_shop_entries(offer)
 
     while True:
@@ -554,7 +555,7 @@ def resolve_shop(screen, character, state):
                 continue
             afford_tag = "" if price <= state["gold"] else " (골드 부족)"
             if entry["kind"] == "item":
-                rarity_kr = "희귀" if obj.rarity == "rare" else "일반"
+                rarity_kr = RARITY_LABEL.get(obj.rarity, obj.rarity)
                 effect = format_stat_bonus(obj.stat_bonus)
                 tags_kr = format_tags(obj.tags)
                 labels.append(
@@ -569,7 +570,7 @@ def resolve_shop(screen, character, state):
             state,
             f"상점 (보유 {state['gold']}G)",
             labels,
-            hint=f"숫자키=구매, R=리롤({REROLL_COST}G, 품절 슬롯 채움), ESC=나가기",
+            hint=f"숫자키=구매, R=리롤({REROLL_COST}G, 진열 전체 갱신), ESC=나가기",
         )
         idx = prompt_choice(
             render, len(labels), allow_escape=True, extra_keys={tcod.event.KeySym.r: "reroll"}
@@ -579,14 +580,11 @@ def resolve_shop(screen, character, state):
             return
 
         if idx == "reroll":
-            if not any(e["sold"] for e in entries):
-                log(state, "[상점] 품절된 아이템이 없어 리롤할 필요가 없습니다.")
-                continue
             if state["gold"] < REROLL_COST:
                 log(state, "[상점] 골드가 부족합니다.")
                 continue
             state["gold"] -= REROLL_COST
-            refill_sold_entries(entries)
+            reroll_all_entries(entries, state["act"])
             log(state, f"[상점] 리롤 완료 (남은 골드 {state['gold']}G)")
             continue
 

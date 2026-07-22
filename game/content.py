@@ -17,6 +17,7 @@ def make_rogue() -> Character:
         base_stats=Stats(hp=90, atk_phys=16, atk_magic=3, def_phys=6, def_magic=4, crit_chance=0.25, crit_damage=1.6),
         skill=Skill(name="연속 베기", cooldown=3, damage_multiplier=1.0, damage_type="phys", hits=2),
         damage_type="phys",
+        image="characters/rogue.png",
     )
 
 
@@ -56,6 +57,7 @@ def make_goblin() -> Monster:
         skill=Skill(name="찌르기", cooldown=4, damage_multiplier=1.8, damage_type="phys"),
         damage_type="phys",
         tier="normal",
+        image="monsters/goblin.png",
     )
 
 
@@ -76,6 +78,7 @@ def make_orc_warrior() -> Monster:
         skill=Skill(name="대지 강타", cooldown=3, damage_multiplier=2.0, damage_type="phys"),
         damage_type="phys",
         tier="elite",
+        gimmick="skill_null",
     )
 
 
@@ -86,6 +89,7 @@ def make_ruin_witch() -> Monster:
         skill=Skill(name="저주의 구슬", cooldown=3, damage_multiplier=2.1, damage_type="magic"),
         damage_type="magic",
         tier="elite",
+        gimmick="synergy_null",
     )
 
 
@@ -99,16 +103,85 @@ def make_forest_guardian() -> Monster:
     )
 
 
+def make_forest_wolf() -> Monster:
+    return Monster(
+        name="숲 늑대",
+        stats=Stats(hp=45, atk_phys=9, atk_magic=0, def_phys=3, def_magic=2, crit_chance=0.08, crit_damage=1.5),
+        skill=Skill(name="물어뜯기", cooldown=3, damage_multiplier=1.7, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_bandit() -> Monster:
+    return Monster(
+        name="산적",
+        stats=Stats(hp=50, atk_phys=10, atk_magic=0, def_phys=4, def_magic=2, crit_chance=0.1, crit_damage=1.5),
+        skill=Skill(name="기습", cooldown=3, damage_multiplier=1.9, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_giant_spider() -> Monster:
+    return Monster(
+        name="거대 거미",
+        stats=Stats(hp=38, atk_phys=7, atk_magic=0, def_phys=2, def_magic=2, crit_chance=0.1, crit_damage=1.6),
+        skill=Skill(name="맹독 침", cooldown=3, damage_multiplier=1.6, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_rotting_zombie() -> Monster:
+    return Monster(
+        name="부패한 좀비",
+        stats=Stats(hp=55, atk_phys=8, atk_magic=0, def_phys=5, def_magic=2, crit_chance=0.03, crit_damage=1.5),
+        skill=Skill(name="감염된 발톱", cooldown=4, damage_multiplier=1.9, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_stone_troll() -> Monster:
+    return Monster(
+        name="돌 트롤",
+        stats=Stats(hp=130, atk_phys=15, atk_magic=0, def_phys=11, def_magic=5, crit_chance=0.06, crit_damage=1.5),
+        skill=Skill(name="바위 주먹", cooldown=3, damage_multiplier=2.1, damage_type="phys"),
+        damage_type="phys",
+        tier="elite",
+        gimmick="healer",
+        gimmick_value=10,
+    )
+
+
+def make_corrupted_druid() -> Monster:
+    return Monster(
+        name="타락한 드루이드",
+        stats=Stats(hp=100, atk_phys=3, atk_magic=17, def_phys=5, def_magic=8, crit_chance=0.12, crit_damage=1.6),
+        skill=Skill(name="가시덩굴", cooldown=3, damage_multiplier=2.0, damage_type="magic"),
+        damage_type="magic",
+        tier="elite",
+        gimmick="shield_tank",
+    )
+
+
 ACT1_MONSTERS = {
     "goblin": make_goblin,
     "poison_frog": make_poison_frog,
+    "forest_wolf": make_forest_wolf,
+    "bandit": make_bandit,
+    "giant_spider": make_giant_spider,
+    "rotting_zombie": make_rotting_zombie,
     "orc_warrior": make_orc_warrior,
     "ruin_witch": make_ruin_witch,
+    "stone_troll": make_stone_troll,
+    "corrupted_druid": make_corrupted_druid,
     "forest_guardian": make_forest_guardian,
 }
 
-ACT1_NORMAL_KEYS = ["goblin", "poison_frog"]
-ACT1_ELITE_KEYS = ["orc_warrior", "ruin_witch"]
+ACT1_NORMAL_KEYS = ["goblin", "poison_frog", "forest_wolf", "bandit", "giant_spider", "rotting_zombie"]
+ACT1_ELITE_KEYS = ["orc_warrior", "ruin_witch", "stone_troll", "corrupted_druid"]
 ACT1_BOSS_KEYS = ["forest_guardian"]
 
 
@@ -144,6 +217,8 @@ def make_frost_golem() -> Monster:
         skill=Skill(name="빙결 강타", cooldown=4, damage_multiplier=2.0, damage_type="phys"),
         damage_type="phys",
         tier="elite",
+        gimmick="inflict_status",
+        gimmick_value=20,
     )
 
 
@@ -154,6 +229,8 @@ def make_ice_spirit() -> Monster:
         skill=Skill(name="서리 폭발", cooldown=3, damage_multiplier=2.1, damage_type="magic"),
         damage_type="magic",
         tier="elite",
+        gimmick="reflect",
+        gimmick_value=15,
     )
 
 
@@ -167,15 +244,84 @@ def make_frost_queen() -> Monster:
     )
 
 
+def make_ice_bat() -> Monster:
+    return Monster(
+        name="얼음 박쥐",
+        stats=Stats(hp=58, atk_phys=12, atk_magic=0, def_phys=4, def_magic=4, crit_chance=0.12, crit_damage=1.6),
+        skill=Skill(name="초음파", cooldown=3, damage_multiplier=1.8, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_cave_bear() -> Monster:
+    return Monster(
+        name="동굴 곰",
+        stats=Stats(hp=75, atk_phys=15, atk_magic=0, def_phys=6, def_magic=3, crit_chance=0.06, crit_damage=1.5),
+        skill=Skill(name="휘두르기", cooldown=3, damage_multiplier=1.9, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_frost_bandit() -> Monster:
+    return Monster(
+        name="서리 도적",
+        stats=Stats(hp=65, atk_phys=14, atk_magic=0, def_phys=5, def_magic=4, crit_chance=0.1, crit_damage=1.6),
+        skill=Skill(name="냉기 일격", cooldown=3, damage_multiplier=1.9, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_crystal_slime() -> Monster:
+    return Monster(
+        name="수정 슬라임",
+        stats=Stats(hp=70, atk_phys=0, atk_magic=16, def_phys=6, def_magic=7, crit_chance=0.05, crit_damage=1.5),
+        skill=Skill(name="수정 파편", cooldown=3, damage_multiplier=1.8, damage_type="magic"),
+        damage_type="magic",
+        tier="normal",
+    )
+
+
+def make_yeti_chieftain() -> Monster:
+    return Monster(
+        name="예티 족장",
+        stats=Stats(hp=210, atk_phys=20, atk_magic=0, def_phys=14, def_magic=6, crit_chance=0.08, crit_damage=1.5),
+        skill=Skill(name="눈사태", cooldown=3, damage_multiplier=2.1, damage_type="phys"),
+        damage_type="phys",
+        tier="elite",
+        gimmick="glass_shield",
+        gimmick_value=60,
+    )
+
+
+def make_ice_wraith() -> Monster:
+    return Monster(
+        name="얼음 망령",
+        stats=Stats(hp=170, atk_phys=0, atk_magic=26, def_phys=8, def_magic=11, crit_chance=0.13, crit_damage=1.6),
+        skill=Skill(name="영혼 서리", cooldown=3, damage_multiplier=2.2, damage_type="magic"),
+        damage_type="magic",
+        tier="elite",
+        gimmick="skill_null",
+    )
+
+
 ACT2_MONSTERS = {
     "frost_wolf": make_frost_wolf,
     "skeleton_mage": make_skeleton_mage,
+    "ice_bat": make_ice_bat,
+    "cave_bear": make_cave_bear,
+    "frost_bandit": make_frost_bandit,
+    "crystal_slime": make_crystal_slime,
     "frost_golem": make_frost_golem,
     "ice_spirit": make_ice_spirit,
+    "yeti_chieftain": make_yeti_chieftain,
+    "ice_wraith": make_ice_wraith,
     "frost_queen": make_frost_queen,
 }
-ACT2_NORMAL_KEYS = ["frost_wolf", "skeleton_mage"]
-ACT2_ELITE_KEYS = ["frost_golem", "ice_spirit"]
+ACT2_NORMAL_KEYS = ["frost_wolf", "skeleton_mage", "ice_bat", "cave_bear", "frost_bandit", "crystal_slime"]
+ACT2_ELITE_KEYS = ["frost_golem", "ice_spirit", "yeti_chieftain", "ice_wraith"]
 ACT2_BOSS_KEYS = ["frost_queen"]
 
 
@@ -211,6 +357,7 @@ def make_fire_elemental() -> Monster:
         skill=Skill(name="대화염", cooldown=3, damage_multiplier=2.2, damage_type="magic"),
         damage_type="magic",
         tier="elite",
+        gimmick="synergy_null",
     )
 
 
@@ -221,6 +368,8 @@ def make_dark_mage() -> Monster:
         skill=Skill(name="암흑파동", cooldown=3, damage_multiplier=2.1, damage_type="magic"),
         damage_type="magic",
         tier="elite",
+        gimmick="healer",
+        gimmick_value=12,
     )
 
 
@@ -234,15 +383,84 @@ def make_demon_king() -> Monster:
     )
 
 
+def make_lava_hound() -> Monster:
+    return Monster(
+        name="용암 사냥개",
+        stats=Stats(hp=85, atk_phys=0, atk_magic=22, def_phys=6, def_magic=8, crit_chance=0.12, crit_damage=1.6),
+        skill=Skill(name="용암 숨결", cooldown=3, damage_multiplier=1.9, damage_type="magic"),
+        damage_type="magic",
+        tier="normal",
+    )
+
+
+def make_cursed_knight() -> Monster:
+    return Monster(
+        name="저주받은 기사",
+        stats=Stats(hp=95, atk_phys=24, atk_magic=0, def_phys=10, def_magic=5, crit_chance=0.1, crit_damage=1.6),
+        skill=Skill(name="저주의 검", cooldown=3, damage_multiplier=2.0, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_obsidian_golem() -> Monster:
+    return Monster(
+        name="흑요석 골렘",
+        stats=Stats(hp=110, atk_phys=20, atk_magic=0, def_phys=16, def_magic=8, crit_chance=0.04, crit_damage=1.5),
+        skill=Skill(name="분쇄", cooldown=4, damage_multiplier=2.1, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_hellhound() -> Monster:
+    return Monster(
+        name="지옥견",
+        stats=Stats(hp=80, atk_phys=26, atk_magic=0, def_phys=7, def_magic=5, crit_chance=0.16, crit_damage=1.6),
+        skill=Skill(name="화염 이빨", cooldown=3, damage_multiplier=1.9, damage_type="phys"),
+        damage_type="phys",
+        tier="normal",
+    )
+
+
+def make_inferno_juggernaut() -> Monster:
+    return Monster(
+        name="인페르노 저거넛",
+        stats=Stats(hp=260, atk_phys=32, atk_magic=0, def_phys=16, def_magic=10, crit_chance=0.1, crit_damage=1.6),
+        skill=Skill(name="용암 돌진", cooldown=3, damage_multiplier=2.2, damage_type="phys"),
+        damage_type="phys",
+        tier="elite",
+        gimmick="shield_tank",
+    )
+
+
+def make_shadow_assassin() -> Monster:
+    return Monster(
+        name="그림자 암살자",
+        stats=Stats(hp=220, atk_phys=28, atk_magic=0, def_phys=10, def_magic=8, crit_chance=0.22, crit_damage=1.8),
+        skill=Skill(name="암습", cooldown=2, damage_multiplier=1.9, damage_type="phys"),
+        damage_type="phys",
+        tier="elite",
+        gimmick="inflict_status",
+        gimmick_value=25,
+    )
+
+
 ACT3_MONSTERS = {
     "fire_imp": make_fire_imp,
     "death_knight": make_death_knight,
+    "lava_hound": make_lava_hound,
+    "cursed_knight": make_cursed_knight,
+    "obsidian_golem": make_obsidian_golem,
+    "hellhound": make_hellhound,
     "fire_elemental": make_fire_elemental,
     "dark_mage": make_dark_mage,
+    "inferno_juggernaut": make_inferno_juggernaut,
+    "shadow_assassin": make_shadow_assassin,
     "demon_king": make_demon_king,
 }
-ACT3_NORMAL_KEYS = ["fire_imp", "death_knight"]
-ACT3_ELITE_KEYS = ["fire_elemental", "dark_mage"]
+ACT3_NORMAL_KEYS = ["fire_imp", "death_knight", "lava_hound", "cursed_knight", "obsidian_golem", "hellhound"]
+ACT3_ELITE_KEYS = ["fire_elemental", "dark_mage", "inferno_juggernaut", "shadow_assassin"]
 ACT3_BOSS_KEYS = ["demon_king"]
 
 
@@ -293,7 +511,7 @@ RELIC_POOL = [
     Relic(name="불굴의 심장", description="전투 중 첫 피격 데미지 무효", effect="first_hit_immune"),
     Relic(name="거인의 뼈", description="최대 HP +30 (이번 런 한정)", effect="max_hp_up"),
     # 하이리스크 강력형 (부작용 동반)
-    Relic(name="악마의 계약", description="물공/마공 +25%, 대신 매턴 시작 시 현재 HP 3% 자해", effect="demons_pact"),
+    Relic(name="악마의 계약", description="물공/마공 +25%, 대신 매턴 시작 시 현재 HP 3% 자해", effect="demons_pact", image="relics/demons_pact.png"),
     Relic(name="폭주의 흉갑", description="물공/마공 +30%, 대신 물방/마방 -20%", effect="berserk_plate"),
     Relic(name="도박사의 주사위", description="크리티컬 확률 +20%p, 대신 크리티컬 데미지 -25%p", effect="gamblers_dice"),
     Relic(name="검은 낙인", description="스킬 쿨타임 -1, 대신 최대 HP -15%", effect="black_brand"),
@@ -310,73 +528,117 @@ RELIC_POOL = [
 
 
 # ---------------------------------------------------------------------------
-# 장비 풀 — 슬롯별 보장 스탯 + 등급별 태그 개수(일반 1개 / 희귀 2개)
+# 장비 풀 — 슬롯별 보장 스탯 + 등급별 태그 개수(일반 1 / 희귀 1 / 유니크 2 / 레전더리 3).
+# 희귀는 기존 2태그에서 1개로 낮추면서 슬롯당 2종은 번개/출혈(신규 시너지)로 재배정했다.
+# 등급별 스탯은 슬롯 기준값 대비 대략 희귀 x1.4 / 유니크 x1.8 / 레전더리 x2.4 스케일.
 # ---------------------------------------------------------------------------
 
 SAMPLE_ITEMS = [
-    # 투구 - HP 증가 (일반 4 / 희귀 4)
+    # 투구 - HP 증가 (일반4 / 희귀4 / 유니크3 / 레전더리3)
     Item(name="가죽 두건", slot="helmet", rarity="common", tags=["poison"], stat_bonus={"hp": 15}),
-    Item(name="독사냥꾼의 투구", slot="helmet", rarity="rare", tags=["poison", "fire"], stat_bonus={"hp": 25}),
     Item(name="철 투구", slot="helmet", rarity="common", tags=["berserker"], stat_bonus={"hp": 20}),
     Item(name="얼음 투구", slot="helmet", rarity="common", tags=["ice"], stat_bonus={"hp": 18}),
-    Item(name="현자의 로브 두건", slot="helmet", rarity="rare", tags=["mana", "fire"], stat_bonus={"hp": 22}),
-    Item(name="화염 두건", slot="helmet", rarity="common", tags=["fire"], stat_bonus={"hp": 17}),
-    Item(name="버서커의 투구", slot="helmet", rarity="rare", tags=["berserker", "ice"], stat_bonus={"hp": 24}),
-    Item(name="얼음 여왕의 관", slot="helmet", rarity="rare", tags=["ice", "mana"], stat_bonus={"hp": 26}),
-    # 왼손 - 방패 또는 무기 (일반 4 / 희귀 4)
+    Item(name="감전 두건", slot="helmet", rarity="common", tags=["lightning"], stat_bonus={"hp": 17}),
+    Item(name="독사냥꾼의 투구", slot="helmet", rarity="rare", tags=["poison"], stat_bonus={"hp": 25}),
+    Item(name="현자의 로브 두건", slot="helmet", rarity="rare", tags=["mana"], stat_bonus={"hp": 22}),
+    Item(name="감전의 투구", slot="helmet", rarity="rare", tags=["lightning"], stat_bonus={"hp": 24}),
+    Item(name="출혈 마녀의 관", slot="helmet", rarity="rare", tags=["bleed"], stat_bonus={"hp": 26}),
+    Item(name="폭풍 지배자의 투구", slot="helmet", rarity="unique", tags=["lightning", "mana"], stat_bonus={"hp": 32}),
+    Item(name="혈투의 투구", slot="helmet", rarity="unique", tags=["bleed", "berserker"], stat_bonus={"hp": 30}),
+    Item(name="삼원소 투구", slot="helmet", rarity="unique", tags=["ice", "fire"], stat_bonus={"hp": 34}),
+    Item(name="폭풍의 제왕관", slot="helmet", rarity="legendary", tags=["lightning", "bleed", "berserker"], stat_bonus={"hp": 42}),
+    Item(name="심연의 대투구", slot="helmet", rarity="legendary", tags=["poison", "ice", "mana"], stat_bonus={"hp": 40}),
+    Item(name="용맹의 왕관", slot="helmet", rarity="legendary", tags=["fire", "berserker", "lightning"], stat_bonus={"hp": 46}),
+    # 왼손 - 방패 또는 무기 (일반4 / 희귀4 / 유니크3 / 레전더리3)
     Item(name="가시 방패", slot="left_hand", rarity="common", tags=["berserker"], stat_bonus={"def_phys": 4}),
-    Item(name="독날 단검", slot="left_hand", rarity="rare", tags=["poison", "berserker"], stat_bonus={"atk_phys": 5}),
     Item(name="냉기의 방패", slot="left_hand", rarity="common", tags=["ice"], stat_bonus={"def_phys": 5}),
-    Item(name="화염의 대거", slot="left_hand", rarity="rare", tags=["fire", "mana"], stat_bonus={"atk_phys": 8}),
     Item(name="화염 방패", slot="left_hand", rarity="common", tags=["fire"], stat_bonus={"def_phys": 4}),
     Item(name="마나의 방패", slot="left_hand", rarity="common", tags=["mana"], stat_bonus={"def_phys": 4}),
-    Item(name="서리 단검", slot="left_hand", rarity="rare", tags=["ice", "poison"], stat_bonus={"atk_phys": 6}),
-    Item(name="광전사의 대거", slot="left_hand", rarity="rare", tags=["berserker", "fire"], stat_bonus={"atk_phys": 7}),
-    # 오른손 - 무기 (일반 4 / 희귀 4)
-    Item(name="녹슨 단검", slot="right_hand", rarity="common", tags=["poison"], stat_bonus={"atk_phys": 5}),
-    Item(name="맹독의 쌍검", slot="right_hand", rarity="rare", tags=["poison", "fire"], stat_bonus={"atk_phys": 9}),
+    Item(name="독날 단검", slot="left_hand", rarity="rare", tags=["poison"], stat_bonus={"atk_phys": 5}),
+    Item(name="화염의 대거", slot="left_hand", rarity="rare", tags=["fire"], stat_bonus={"atk_phys": 8}),
+    Item(name="감전의 단검", slot="left_hand", rarity="rare", tags=["lightning"], stat_bonus={"atk_phys": 6}),
+    Item(name="출혈의 대거", slot="left_hand", rarity="rare", tags=["bleed"], stat_bonus={"atk_phys": 7}),
+    Item(name="뇌전 방패", slot="left_hand", rarity="unique", tags=["lightning", "ice"], stat_bonus={"def_phys": 10}),
+    Item(name="출혈 단검", slot="left_hand", rarity="unique", tags=["bleed", "poison"], stat_bonus={"atk_phys": 10}),
+    Item(name="폭풍의 대거", slot="left_hand", rarity="unique", tags=["lightning", "berserker"], stat_bonus={"atk_phys": 11}),
+    Item(name="심판자의 방패", slot="left_hand", rarity="legendary", tags=["lightning", "bleed", "mana"], stat_bonus={"def_phys": 14}),
+    Item(name="원소지배 단검", slot="left_hand", rarity="legendary", tags=["fire", "ice", "poison"], stat_bonus={"atk_phys": 15}),
+    Item(name="종말의 대거", slot="left_hand", rarity="legendary", tags=["berserker", "bleed", "lightning"], stat_bonus={"atk_phys": 16}),
+    # 오른손 - 무기 (일반4 / 희귀4 / 유니크3 / 레전더리3)
+    Item(name="녹슨 단검", slot="right_hand", rarity="common", tags=["poison"], stat_bonus={"atk_phys": 5}, image="items/rusty_dagger.png"),
     Item(name="부족의 도끼", slot="right_hand", rarity="common", tags=["berserker"], stat_bonus={"atk_phys": 6}),
-    Item(name="얼음 창", slot="right_hand", rarity="rare", tags=["ice", "berserker"], stat_bonus={"atk_phys": 10}),
-    Item(name="얼음 단검", slot="right_hand", rarity="common", tags=["ice"], stat_bonus={"atk_phys": 5}),
+    Item(name="출혈 단도", slot="right_hand", rarity="common", tags=["bleed"], stat_bonus={"atk_phys": 5}),
     Item(name="마나의 지팡이", slot="right_hand", rarity="common", tags=["mana"], stat_bonus={"atk_phys": 5}),
-    Item(name="화염의 대검", slot="right_hand", rarity="rare", tags=["fire", "berserker"], stat_bonus={"atk_phys": 9}),
-    Item(name="현자의 지팡이", slot="right_hand", rarity="rare", tags=["mana", "poison"], stat_bonus={"atk_phys": 9}),
-    # 갑옷 - 물방/마방 증가 (일반 4 / 희귀 4)
+    Item(name="맹독의 쌍검", slot="right_hand", rarity="rare", tags=["poison"], stat_bonus={"atk_phys": 9}, image="items/venomous_twin_swords.png"),
+    Item(name="얼음 창", slot="right_hand", rarity="rare", tags=["ice"], stat_bonus={"atk_phys": 10}),
+    Item(name="감전의 대검", slot="right_hand", rarity="rare", tags=["lightning"], stat_bonus={"atk_phys": 9}),
+    Item(name="출혈의 지팡이", slot="right_hand", rarity="rare", tags=["bleed"], stat_bonus={"atk_phys": 9}),
+    Item(name="뇌전검", slot="right_hand", rarity="unique", tags=["lightning", "berserker"], stat_bonus={"atk_phys": 13}),
+    Item(name="출혈의 쌍검", slot="right_hand", rarity="unique", tags=["bleed", "poison"], stat_bonus={"atk_phys": 13}),
+    Item(name="삼재의 지팡이", slot="right_hand", rarity="unique", tags=["fire", "mana"], stat_bonus={"atk_phys": 14}),
+    Item(name="폭풍출혈검", slot="right_hand", rarity="legendary", tags=["lightning", "bleed", "berserker"], stat_bonus={"atk_phys": 19}),
+    Item(name="대현자의 지팡이", slot="right_hand", rarity="legendary", tags=["mana", "fire", "ice"], stat_bonus={"atk_phys": 18}),
+    Item(name="심연의 대검", slot="right_hand", rarity="legendary", tags=["poison", "bleed", "lightning"], stat_bonus={"atk_phys": 20}),
+    # 갑옷 - 물방/마방 증가 (일반4 / 희귀4 / 유니크3 / 레전더리3)
     Item(name="가죽 갑옷", slot="armor", rarity="common", tags=["ice"], stat_bonus={"def_phys": 3, "def_magic": 3}),
-    Item(name="서리 갑옷", slot="armor", rarity="rare", tags=["ice", "mana"], stat_bonus={"def_phys": 6, "def_magic": 6}),
     Item(name="가시 갑옷", slot="armor", rarity="common", tags=["berserker"], stat_bonus={"def_phys": 4}),
-    Item(name="용의 비늘 갑옷", slot="armor", rarity="rare", tags=["fire", "berserker"], stat_bonus={"def_phys": 7, "def_magic": 7}),
     Item(name="독저항 갑옷", slot="armor", rarity="common", tags=["poison"], stat_bonus={"def_phys": 3, "def_magic": 3}),
     Item(name="마법사의 로브", slot="armor", rarity="common", tags=["mana"], stat_bonus={"def_phys": 2, "def_magic": 4}),
-    Item(name="독룡의 갑옷", slot="armor", rarity="rare", tags=["poison", "fire"], stat_bonus={"def_phys": 6, "def_magic": 6}),
-    Item(name="얼음전사 갑옷", slot="armor", rarity="rare", tags=["ice", "berserker"], stat_bonus={"def_phys": 7, "def_magic": 5}),
-    # 신발 - 크리율/크리데미지 (일반 4 / 희귀 4)
+    Item(name="서리 갑옷", slot="armor", rarity="rare", tags=["ice"], stat_bonus={"def_phys": 6, "def_magic": 6}),
+    Item(name="용의 비늘 갑옷", slot="armor", rarity="rare", tags=["fire"], stat_bonus={"def_phys": 7, "def_magic": 7}),
+    Item(name="감전 갑옷", slot="armor", rarity="rare", tags=["lightning"], stat_bonus={"def_phys": 6, "def_magic": 6}),
+    Item(name="출혈전사 갑옷", slot="armor", rarity="rare", tags=["bleed"], stat_bonus={"def_phys": 7, "def_magic": 5}),
+    Item(name="폭풍갑주", slot="armor", rarity="unique", tags=["lightning", "ice"], stat_bonus={"def_phys": 9, "def_magic": 9}),
+    Item(name="유혈갑주", slot="armor", rarity="unique", tags=["bleed", "berserker"], stat_bonus={"def_phys": 10, "def_magic": 8}),
+    Item(name="마나실드 갑옷", slot="armor", rarity="unique", tags=["mana", "fire"], stat_bonus={"def_phys": 9, "def_magic": 10}),
+    Item(name="심연의 전신갑주", slot="armor", rarity="legendary", tags=["lightning", "bleed", "poison"], stat_bonus={"def_phys": 13, "def_magic": 13}),
+    Item(name="용맹의 성갑", slot="armor", rarity="legendary", tags=["berserker", "fire", "ice"], stat_bonus={"def_phys": 14, "def_magic": 12}),
+    Item(name="대현자의 로브", slot="armor", rarity="legendary", tags=["mana", "lightning", "bleed"], stat_bonus={"def_phys": 12, "def_magic": 14}),
+    # 신발 - 크리율/크리데미지 (일반4 / 희귀4 / 유니크3 / 레전더리3)
     Item(name="사냥꾼의 부츠", slot="boots", rarity="common", tags=["berserker"], stat_bonus={"crit_chance": 0.05}),
-    Item(name="질풍의 부츠", slot="boots", rarity="rare", tags=["berserker", "ice"], stat_bonus={"crit_chance": 0.1, "crit_damage": 0.1}),
     Item(name="독안개 신발", slot="boots", rarity="common", tags=["poison"], stat_bonus={"crit_chance": 0.04}),
-    Item(name="화염 질주화", slot="boots", rarity="rare", tags=["fire", "mana"], stat_bonus={"crit_chance": 0.08, "crit_damage": 0.15}),
     Item(name="냉기의 신발", slot="boots", rarity="common", tags=["ice"], stat_bonus={"crit_chance": 0.04}),
     Item(name="마나의 신발", slot="boots", rarity="common", tags=["mana"], stat_bonus={"crit_chance": 0.04}),
-    Item(name="독개구리 부츠", slot="boots", rarity="rare", tags=["poison", "berserker"], stat_bonus={"crit_chance": 0.09, "crit_damage": 0.1}),
-    Item(name="현자의 슬리퍼", slot="boots", rarity="rare", tags=["mana", "ice"], stat_bonus={"crit_chance": 0.07, "crit_damage": 0.12}),
-    # 목걸이 - 스킬 쿨다운 감소 (일반 4 / 희귀 4)
+    Item(name="질풍의 부츠", slot="boots", rarity="rare", tags=["berserker"], stat_bonus={"crit_chance": 0.1, "crit_damage": 0.1}),
+    Item(name="화염 질주화", slot="boots", rarity="rare", tags=["fire"], stat_bonus={"crit_chance": 0.08, "crit_damage": 0.15}),
+    Item(name="감전 부츠", slot="boots", rarity="rare", tags=["lightning"], stat_bonus={"crit_chance": 0.09, "crit_damage": 0.1}),
+    Item(name="출혈 슬리퍼", slot="boots", rarity="rare", tags=["bleed"], stat_bonus={"crit_chance": 0.07, "crit_damage": 0.12}),
+    Item(name="폭풍질주화", slot="boots", rarity="unique", tags=["lightning", "berserker"], stat_bonus={"crit_chance": 0.13, "crit_damage": 0.18}),
+    Item(name="유혈부츠", slot="boots", rarity="unique", tags=["bleed", "poison"], stat_bonus={"crit_chance": 0.12, "crit_damage": 0.2}),
+    Item(name="서리감전화", slot="boots", rarity="unique", tags=["lightning", "ice"], stat_bonus={"crit_chance": 0.14, "crit_damage": 0.19}),
+    Item(name="종말의 부츠", slot="boots", rarity="legendary", tags=["lightning", "bleed", "berserker"], stat_bonus={"crit_chance": 0.18, "crit_damage": 0.26}),
+    Item(name="삼재화", slot="boots", rarity="legendary", tags=["fire", "ice", "poison"], stat_bonus={"crit_chance": 0.17, "crit_damage": 0.25}),
+    Item(name="폭군의 신발", slot="boots", rarity="legendary", tags=["berserker", "fire", "lightning"], stat_bonus={"crit_chance": 0.19, "crit_damage": 0.28}),
+    # 목걸이 - 스킬 쿨다운 감소 (일반4 / 희귀4 / 유니크3 / 레전더리3)
     Item(name="집중의 목걸이", slot="necklace", rarity="common", tags=["mana"], stat_bonus={"cooldown_reduction": 1}),
-    Item(name="현자의 목걸이", slot="necklace", rarity="rare", tags=["mana", "fire"], stat_bonus={"cooldown_reduction": 2}),
     Item(name="맹독의 목걸이", slot="necklace", rarity="common", tags=["poison"], stat_bonus={"cooldown_reduction": 1}),
-    Item(name="전투의 부적", slot="necklace", rarity="rare", tags=["berserker", "ice"], stat_bonus={"cooldown_reduction": 2}),
     Item(name="서리의 목걸이", slot="necklace", rarity="common", tags=["ice"], stat_bonus={"cooldown_reduction": 1}),
     Item(name="화염의 목걸이", slot="necklace", rarity="common", tags=["fire"], stat_bonus={"cooldown_reduction": 1}),
-    Item(name="독아의 목걸이", slot="necklace", rarity="rare", tags=["poison", "berserker"], stat_bonus={"cooldown_reduction": 2}),
-    Item(name="얼음마법사의 목걸이", slot="necklace", rarity="rare", tags=["ice", "mana"], stat_bonus={"cooldown_reduction": 2}),
-    # 반지 - 방어막 제공 (일반 4 / 희귀 4)
+    Item(name="현자의 목걸이", slot="necklace", rarity="rare", tags=["mana"], stat_bonus={"cooldown_reduction": 2}),
+    Item(name="전투의 부적", slot="necklace", rarity="rare", tags=["berserker"], stat_bonus={"cooldown_reduction": 2}),
+    Item(name="감전 목걸이", slot="necklace", rarity="rare", tags=["lightning"], stat_bonus={"cooldown_reduction": 2}),
+    Item(name="출혈 목걸이", slot="necklace", rarity="rare", tags=["bleed"], stat_bonus={"cooldown_reduction": 2}),
+    Item(name="폭풍의 부적", slot="necklace", rarity="unique", tags=["lightning", "mana"], stat_bonus={"cooldown_reduction": 3}),
+    Item(name="유혈의 목걸이", slot="necklace", rarity="unique", tags=["bleed", "berserker"], stat_bonus={"cooldown_reduction": 3}),
+    Item(name="원소의 목걸이", slot="necklace", rarity="unique", tags=["fire", "ice"], stat_bonus={"cooldown_reduction": 3}),
+    Item(name="시공의 목걸이", slot="necklace", rarity="legendary", tags=["lightning", "bleed", "mana"], stat_bonus={"cooldown_reduction": 4}),
+    Item(name="대재앙의 부적", slot="necklace", rarity="legendary", tags=["poison", "fire", "berserker"], stat_bonus={"cooldown_reduction": 4}),
+    Item(name="심연의 목걸이", slot="necklace", rarity="legendary", tags=["ice", "bleed", "lightning"], stat_bonus={"cooldown_reduction": 4}),
+    # 반지 - 방어막 제공 (일반4 / 희귀4 / 유니크3 / 레전더리3)
     Item(name="수호의 반지", slot="ring", rarity="common", tags=["mana"], stat_bonus={"shield": 10}),
-    Item(name="대마법사의 인장", slot="ring", rarity="rare", tags=["mana", "poison"], stat_bonus={"shield": 20}),
     Item(name="불꽃 반지", slot="ring", rarity="common", tags=["fire"], stat_bonus={"shield": 8}),
-    Item(name="서리 인장", slot="ring", rarity="rare", tags=["ice", "berserker"], stat_bonus={"shield": 18}),
     Item(name="독저항 반지", slot="ring", rarity="common", tags=["poison"], stat_bonus={"shield": 8}),
     Item(name="전사의 반지", slot="ring", rarity="common", tags=["berserker"], stat_bonus={"shield": 9}),
-    Item(name="화염군주의 반지", slot="ring", rarity="rare", tags=["fire", "berserker"], stat_bonus={"shield": 19}),
-    Item(name="얼음현자의 반지", slot="ring", rarity="rare", tags=["ice", "mana"], stat_bonus={"shield": 20}),
+    Item(name="대마법사의 인장", slot="ring", rarity="rare", tags=["mana"], stat_bonus={"shield": 20}),
+    Item(name="서리 인장", slot="ring", rarity="rare", tags=["ice"], stat_bonus={"shield": 18}),
+    Item(name="감전의 인장", slot="ring", rarity="rare", tags=["lightning"], stat_bonus={"shield": 19}),
+    Item(name="출혈의 인장", slot="ring", rarity="rare", tags=["bleed"], stat_bonus={"shield": 20}),
+    Item(name="폭풍의 인장", slot="ring", rarity="unique", tags=["lightning", "mana"], stat_bonus={"shield": 27}),
+    Item(name="유혈의 반지", slot="ring", rarity="unique", tags=["bleed", "poison"], stat_bonus={"shield": 26}),
+    Item(name="삼원소 인장", slot="ring", rarity="unique", tags=["fire", "berserker"], stat_bonus={"shield": 28}),
+    Item(name="심연의 인장", slot="ring", rarity="legendary", tags=["lightning", "bleed", "mana"], stat_bonus={"shield": 36}),
+    Item(name="종말의 반지", slot="ring", rarity="legendary", tags=["poison", "fire", "berserker"], stat_bonus={"shield": 34}),
+    Item(name="태초의 인장", slot="ring", rarity="legendary", tags=["ice", "lightning", "bleed"], stat_bonus={"shield": 38}),
 ]
 
 assert {item.slot for item in SAMPLE_ITEMS} == set(EQUIPMENT_SLOTS)

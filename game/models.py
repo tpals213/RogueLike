@@ -1,6 +1,7 @@
 """전투/장비 관련 기본 데이터 구조 (기획서 4장, 5장 참고)."""
 
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
@@ -30,8 +31,8 @@ class Skill:
 # / armor(갑옷) / boots(신발) / necklace(목걸이) / ring(반지)
 EQUIPMENT_SLOTS = ["helmet", "left_hand", "right_hand", "armor", "boots", "necklace", "ring"]
 
-# 등급별 보유 시너지 태그 개수 (기획서: 일반 1개, 희귀 2개)
-RARITY_TAG_COUNT = {"common": 1, "rare": 2}
+# 등급별 보유 시너지 태그 개수 (일반 1개 / 희귀 1개 / 유니크 2개 / 레전더리 3개)
+RARITY_TAG_COUNT = {"common": 1, "rare": 1, "unique": 2, "legendary": 3}
 
 
 @dataclass
@@ -41,6 +42,7 @@ class Item:
     rarity: str  # "common" or "rare"
     tags: list[str]
     stat_bonus: dict[str, int] = field(default_factory=dict)
+    image: Optional[str] = None  # assets/images/ 기준 상대 경로, 없으면 None (그래픽 미제작)
 
 
 @dataclass
@@ -48,6 +50,7 @@ class Relic:
     name: str
     description: str
     effect: str  # 코드에서 참조할 효과 식별자 (예: "poison_tick_half", "first_hit_immune", "max_hp_up")
+    image: Optional[str] = None  # assets/images/ 기준 상대 경로, 없으면 None (그래픽 미제작)
 
 
 @dataclass
@@ -58,6 +61,7 @@ class Character:
     damage_type: str  # 기본 공격 속성: "phys" or "magic"
     equipment: dict[str, Item] = field(default_factory=dict)
     relics: list[Relic] = field(default_factory=list)
+    image: Optional[str] = None  # assets/images/ 기준 상대 경로, 없으면 None (그래픽 미제작)
 
     def equip(self, item: Item) -> None:
         self.equipment[item.slot] = item
@@ -76,3 +80,8 @@ class Monster:
     skill: Skill
     damage_type: str
     tier: str  # "normal" or "elite" or "boss"
+    image: Optional[str] = None  # assets/images/ 기준 상대 경로, 없으면 None (그래픽 미제작)
+    # 기믹 식별자 (예: "skill_null", "reflect") — 없으면 None. gimmick_value는 기믹별 파라미터
+    # 하나를 재사용(회복%, 반사%, 보호막량 등 기믹마다 의미가 다름).
+    gimmick: Optional[str] = None
+    gimmick_value: int = 0

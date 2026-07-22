@@ -1,13 +1,17 @@
-"""장비 태그 기반 시너지 계산 (5종 태그, 3/5/7 스택 임계값).
+"""장비 태그 기반 시너지 계산 (7종 태그, 3/5/7 스택 임계값).
 
 수치는 초기 설계값이며 밸런싱은 추후 조정 대상.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 TIERS = (7, 5, 3)  # 높은 임계값부터 확인
-SYNERGY_TAGS = ["poison", "fire", "berserker", "ice", "mana"]
-TAG_LABEL = {"poison": "독", "fire": "화염", "berserker": "버서커", "ice": "얼음", "mana": "마나"}
+SYNERGY_TAGS = ["poison", "fire", "berserker", "ice", "mana", "lightning", "bleed"]
+TAG_LABEL = {
+    "poison": "독", "fire": "화염", "berserker": "버서커", "ice": "얼음", "mana": "마나",
+    "lightning": "번개", "bleed": "출혈",
+}
 
 
 def _tier(count: int) -> int:
@@ -15,6 +19,14 @@ def _tier(count: int) -> int:
         if count >= t:
             return t
     return 0
+
+
+def tier_and_progress(count: int) -> tuple[int, Optional[int]]:
+    """(현재 발동 중인 티어, 다음 목표 티어)를 반환한다.
+    7 티어를 이미 달성했으면 다음 목표는 없으므로 None."""
+    tier = _tier(count)
+    next_tier = next((t for t in sorted(TIERS) if t > count), None)
+    return tier, next_tier
 
 
 @dataclass
@@ -41,6 +53,18 @@ class SynergyResult:
     atk_magic_mult: float = 1.0
     shield_regen_chance: float = 0.0
     shield_regen_ratio: float = 0.5
+
+    # 번개: 공격 시 lightning_proc_chance로 방어력 무시 즉발 피해(감전) lightning_burst_flat만큼 발동,
+    # lightning_chain_chance로 같은 피해가 한 번 더(연쇄) 발동
+    lightning_proc_chance: float = 0.0
+    lightning_burst_flat: int = 0
+    lightning_chain_chance: float = 0.0
+
+    # 출혈: 공격 시 bleed_proc_chance로 1스택 부여, 매턴 종료 시 스택당 고정 피해(bleed_tick_flat).
+    # 3/5티어는 틱 후 스택이 1씩 자연 감소(지혈)하지만, 7티어는 감소 없이 영구 누적된다.
+    bleed_proc_chance: float = 0.0
+    bleed_tick_flat: int = 0
+    bleed_decays: bool = True
 
 
 def compute_synergy(tags: list[str]) -> SynergyResult:
@@ -86,6 +110,22 @@ def compute_synergy(tags: list[str]) -> SynergyResult:
     elif mana_tier == 3:
         result.atk_magic_mult = 1.15
 
+    lightning_tier = _tier(tags.count("lightning"))
+    if lightning_tier == 7:
+        result.lightning_proc_chance, result.lightning_burst_flat, result.lightning_chain_chance = 0.8, 20, 0.3
+    elif lightning_tier == 5:
+        result.lightning_proc_chance, result.lightning_burst_flat = 0.6, 14
+    elif lightning_tier == 3:
+        result.lightning_proc_chance, result.lightning_burst_flat = 0.4, 8
+
+    bleed_tier = _tier(tags.count("bleed"))
+    if bleed_tier == 7:
+        result.bleed_proc_chance, result.bleed_tick_flat, result.bleed_decays = 0.8, 14, False
+    elif bleed_tier == 5:
+        result.bleed_proc_chance, result.bleed_tick_flat = 0.6, 10
+    elif bleed_tier == 3:
+        result.bleed_proc_chance, result.bleed_tick_flat = 0.4, 6
+
     return result
 
 
@@ -124,6 +164,22 @@ def describe_active_synergies(tags: list[str]) -> list[str]:
     if mana_t:
         extra = f", 보호막 재생 {result.shield_regen_chance * 100:.0f}%" if result.shield_regen_chance else ""
         lines.append(f"[마나 {mana_t}] 마공 +{int((result.atk_magic_mult - 1) * 100)}%{extra}")
+
+    lightning_t = _tier(tags.count("lightning"))
+    if lightning_t:
+        extra = f", 연쇄 {result.lightning_chain_chance * 100:.0f}%" if result.lightning_chain_chance else ""
+        lines.append(
+            f"[번개 {lightning_t}] 감전 발동 {result.lightning_proc_chance * 100:.0f}% "
+            f"(방어 무시 {result.lightning_burst_flat} 피해{extra})"
+        )
+
+    bleed_t = _tier(tags.count("bleed"))
+    if bleed_t:
+        decay_note = "지혈 없이 영구 누적" if not result.bleed_decays else "매턴 1스택 자연 감소"
+        lines.append(
+            f"[출혈 {bleed_t}] 출혈 부여 {result.bleed_proc_chance * 100:.0f}%, "
+            f"스택당 {result.bleed_tick_flat} 고정피해 ({decay_note})"
+        )
 
     return lines
 

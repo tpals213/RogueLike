@@ -21,7 +21,7 @@ package.domain = org.jangsemin
 source.dir = mobile_build
 
 # (list) Source files to include (leave empty to include all the files)
-source.include_exts = py,ttf
+source.include_exts = py,ttf,png
 
 # (list) List of inclusions using pattern matching
 #source.include_patterns = assets/*,images/*.png
