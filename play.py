@@ -9,11 +9,11 @@ import sys
 from pathlib import Path
 
 from game.combat import simulate_battle
-from game.content import ACTS, RELIC_POOL, SAMPLE_ITEMS, STARTER_ITEM_NAMES, make_rogue
-from game.hub import apply_unlocked_traits
+from game.content import ACTS, ELITE_RELIC_RARITY_BY_ACT, RELIC_POOL, SAMPLE_ITEMS, STARTER_ITEM_NAMES, make_rogue, relics_by_rarity
+from game.hub import apply_gold_kill_bonus, apply_unlocked_traits, compute_trait_modifiers, grant_bonus_starting_items
 from game.mapgen import generate_act_map, render_map
 from game.models import EQUIPMENT_SLOTS
-from game.relics import compute_relic_modifiers
+from game.relics import apply_relic_gold_bonus, compute_relic_modifiers
 from game.save_system import load_meta, save_meta
 from game.shop import REROLL_COST, build_shop_entries, generate_shop_offer, reroll_all_entries
 from game.synergy import SYNERGY_TAGS
@@ -39,7 +39,7 @@ _TYPE_LABEL = {
 
 def _grant_relic(character, relic):
     character.relics.append(relic)
-    print(f"[유물 획득] {relic.name} - {relic.description}")
+    print(f"[유물 획득/{relic.rarity}] {relic.name} - {relic.description}")
 
 
 def _choose_item_reward(character, pool, auto):
@@ -70,8 +70,9 @@ def _choose_item_reward(character, pool, auto):
     print(f"[아이템 획득] {pick.name} 장착 완료")
 
 
-def _choose_boss_relic(character, auto):
-    choices = random.sample(RELIC_POOL, min(3, len(RELIC_POOL)))
+def _choose_boss_relic(character, act, auto):
+    pool = relics_by_rarity(ELITE_RELIC_RARITY_BY_ACT[act])
+    choices = random.sample(pool, min(3, len(pool)))
     print("[유물 선택] 처치 보상으로 다음 중 하나를 고르세요:")
     for idx, relic in enumerate(choices, start=1):
         print(f"  {idx}. {relic.name} - {relic.description}")
@@ -112,27 +113,28 @@ def resolve_combat(character, state, tier, auto):
     state["nodes_cleared"] += 1
     act = state["act"]
 
-    gold_bonus = compute_relic_modifiers(character).gold_per_win
-    if gold_bonus:
-        state["gold"] += gold_bonus
-        print(f"[유물] 승리 보너스 골드 +{gold_bonus}")
+    relic_mods = compute_relic_modifiers(character)
+    if relic_mods.gold_per_win:
+        state["gold"] += relic_mods.gold_per_win
+        print(f"[유물] 승리 보너스 골드 +{relic_mods.gold_per_win}")
 
     if tier == "normal":
-        state["gold"] += GOLD_BASE["normal"] * act
+        state["gold"] += apply_relic_gold_bonus(relic_mods, apply_gold_kill_bonus(character.trait_mods, GOLD_BASE["normal"] * act))
         state["diamond"] += DIAMOND_BASE["normal"] * act
         common_pool = [i for i in SAMPLE_ITEMS if i.rarity == "common"]
         _choose_item_reward(character, common_pool, auto)
     elif tier == "elite":
-        state["gold"] += GOLD_BASE["elite"] * act
+        state["gold"] += apply_relic_gold_bonus(relic_mods, apply_gold_kill_bonus(character.trait_mods, GOLD_BASE["elite"] * act))
         state["diamond"] += DIAMOND_BASE["elite"] * act
         rare_pool = [i for i in SAMPLE_ITEMS if i.rarity == "rare"]
         _choose_item_reward(character, rare_pool, auto)
-        _grant_relic(character, random.choice(RELIC_POOL))
+        elite_relic_pool = relics_by_rarity(ELITE_RELIC_RARITY_BY_ACT[act])
+        _grant_relic(character, random.choice(elite_relic_pool))
     elif tier == "boss":
         state["diamond"] += DIAMOND_BASE["elite"] * act * 2
         state["act_cleared"] = True
         print(f"{act}장 보스 처치!")
-        _choose_boss_relic(character, auto)
+        _choose_boss_relic(character, act, auto)
 
     if overkill:
         bonus = overkill // 10
@@ -179,7 +181,8 @@ def resolve_blessing(character, state, auto):
         state["trivialize"] = 3
         print("[축복] 이후 3번의 전투는 적 HP가 1로 시작합니다.")
     elif effect == "relic":
-        _grant_relic(character, random.choice(RELIC_POOL))
+        pool = relics_by_rarity(ELITE_RELIC_RARITY_BY_ACT[state["act"]])
+        _grant_relic(character, random.choice(pool))
     elif effect == "maxhp":
         character.base_stats.hp += 20
         state["hp"] += 20
@@ -187,7 +190,8 @@ def resolve_blessing(character, state, auto):
 
 
 def resolve_relic_room(character, state):
-    relic = random.choice(RELIC_POOL)
+    pool = relics_by_rarity(ELITE_RELIC_RARITY_BY_ACT[state["act"]])
+    relic = random.choice(pool)
     print("[유물방] 무조건 유물을 획득합니다.")
     _grant_relic(character, relic)
 
@@ -225,26 +229,33 @@ def resolve_well(character, state, auto):
 
 
 def resolve_shop(character, state, auto):
-    offer = generate_shop_offer(character, state["act"])
+    trait_mods = character.trait_mods
+    offer = generate_shop_offer(
+        character, state["act"],
+        discount_percent=trait_mods.shop_discount_percent,
+        rarity_bonus=trait_mods.rarity_bonus_percent,
+        bonus_relic_slots=trait_mods.shop_bonus_relic_slots,
+    )
     entries = build_shop_entries(offer)
+    free_rerolls = trait_mods.shop_free_reroll
 
     while True:
-        print(f"[상점] 보유 골드: {state['gold']}G")
+        print(f"[상점] 보유 골드: {state['gold']}G" + (f" (무료 리롤 {free_rerolls}회 남음)" if free_rerolls else ""))
         for idx, entry in enumerate(entries, start=1):
             obj = entry["obj"]
             sold_tag = " [품절]" if entry["sold"] else ""
             if entry["kind"] == "item":
                 print(f"  {idx}. [장비/{obj.slot}] {obj.name} ({obj.rarity}, {obj.tags}) - {entry['price']}G{sold_tag}")
             else:
-                print(f"  {idx}. [유물] {obj.name} - {obj.description} - {entry['price']}G{sold_tag}")
-        print(f"  R. 리롤 (진열 전체를 새로 채움) - {REROLL_COST}G")
+                print(f"  {idx}. [유물/{obj.rarity}] {obj.name} - {obj.description} - {entry['price']}G{sold_tag}")
+        print(f"  R. 리롤 (진열 전체를 새로 채움) - {'무료' if free_rerolls else f'{REROLL_COST}G'}")
         print("  0. 나가기")
 
         buyable = [i for i, e in enumerate(entries) if not e["sold"] and e["price"] <= state["gold"]]
 
         if auto:
             roll = random.random()
-            if state["gold"] >= REROLL_COST and roll < 0.2:
+            if (free_rerolls or state["gold"] >= REROLL_COST) and roll < 0.2:
                 raw = "r"
             elif not buyable or roll < 0.3:
                 raw = "0"
@@ -257,11 +268,18 @@ def resolve_shop(character, state, auto):
             return
 
         if raw.lower() == "r":
-            if state["gold"] < REROLL_COST:
+            if free_rerolls > 0:
+                free_rerolls -= 1
+            elif state["gold"] >= REROLL_COST:
+                state["gold"] -= REROLL_COST
+            else:
                 print("[상점] 골드가 부족합니다.")
                 continue
-            state["gold"] -= REROLL_COST
-            reroll_all_entries(entries, state["act"])
+            reroll_all_entries(
+                entries, state["act"],
+                discount_percent=trait_mods.shop_discount_percent,
+                rarity_bonus=trait_mods.rarity_bonus_percent,
+            )
             print(f"[상점] 리롤 완료 (남은 골드 {state['gold']}G)")
             continue
 
@@ -384,16 +402,21 @@ def main() -> None:
 
     character = make_rogue()
     apply_unlocked_traits(character, meta["unlocked_traits"])
+    character.trait_mods = compute_trait_modifiers(meta["unlocked_traits"])
     if meta["unlocked_traits"]:
         print(f"[허브 특성 적용] {meta['unlocked_traits']}")
     for item in SAMPLE_ITEMS:
         if item.name in STARTER_ITEM_NAMES:
             character.equip(item)
+    if character.trait_mods.bonus_starting_items:
+        granted = grant_bonus_starting_items(character, character.trait_mods.bonus_starting_items)
+        for item in granted:
+            print(f"[특성: 여행의 준비] {item.name} 추가 장착")
 
     state = {
         "hp": character.base_stats.hp,
         "shield": 0,
-        "gold": 0,
+        "gold": character.trait_mods.bonus_starting_gold,
         "diamond": 0,
         "trivialize": 0,
         "alive": True,

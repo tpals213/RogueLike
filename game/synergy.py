@@ -67,10 +67,22 @@ class SynergyResult:
     bleed_decays: bool = True
 
 
-def compute_synergy(tags: list[str]) -> SynergyResult:
+def compute_synergy(tags: list[str], boost_all: int = 0, boost_highest: int = 0) -> SynergyResult:
+    """boost_all/boost_highest는 특성 트리(예: "미다스의 축복")로 얻는 가상 태그 보너스 -
+    실제 장비 태그 개수에 더해서 임계값 판정에 반영한다. boost_highest는 현재 가장 많이
+    보유한 태그 하나에만(태그를 하나도 안 꼈으면 무시) 추가로 붙는다.
+    """
+    counts = {tag: tags.count(tag) for tag in SYNERGY_TAGS}
+    if boost_all:
+        counts = {tag: count + boost_all for tag, count in counts.items()}
+    if boost_highest:
+        best_tag = max(counts, key=lambda t: counts[t])
+        if counts[best_tag] > 0:
+            counts[best_tag] += boost_highest
+
     result = SynergyResult()
 
-    poison_tier = _tier(tags.count("poison"))
+    poison_tier = _tier(counts["poison"])
     if poison_tier == 7:
         result.poison_proc_chance = 1.0
     elif poison_tier == 5:
@@ -78,7 +90,7 @@ def compute_synergy(tags: list[str]) -> SynergyResult:
     elif poison_tier == 3:
         result.poison_proc_chance = 0.5
 
-    fire_tier = _tier(tags.count("fire"))
+    fire_tier = _tier(counts["fire"])
     if fire_tier == 7:
         result.fire_proc_chance, result.fire_stack_amount = 1.0, 15
     elif fire_tier == 5:
@@ -86,7 +98,7 @@ def compute_synergy(tags: list[str]) -> SynergyResult:
     elif fire_tier == 3:
         result.fire_proc_chance, result.fire_stack_amount = 0.5, 10
 
-    berserker_tier = _tier(tags.count("berserker"))
+    berserker_tier = _tier(counts["berserker"])
     if berserker_tier == 7:
         result.atk_phys_mult, result.lifesteal_chance = 1.5, 0.3
     elif berserker_tier == 5:
@@ -94,7 +106,7 @@ def compute_synergy(tags: list[str]) -> SynergyResult:
     elif berserker_tier == 3:
         result.atk_phys_mult = 1.15
 
-    ice_tier = _tier(tags.count("ice"))
+    ice_tier = _tier(counts["ice"])
     if ice_tier == 7:
         result.ice_proc_chance, result.ice_fail_chance = 0.5, 0.3
     elif ice_tier == 5:
@@ -102,7 +114,7 @@ def compute_synergy(tags: list[str]) -> SynergyResult:
     elif ice_tier == 3:
         result.ice_proc_chance = 0.3
 
-    mana_tier = _tier(tags.count("mana"))
+    mana_tier = _tier(counts["mana"])
     if mana_tier == 7:
         result.atk_magic_mult, result.shield_regen_chance = 1.5, 0.3
     elif mana_tier == 5:
@@ -110,7 +122,7 @@ def compute_synergy(tags: list[str]) -> SynergyResult:
     elif mana_tier == 3:
         result.atk_magic_mult = 1.15
 
-    lightning_tier = _tier(tags.count("lightning"))
+    lightning_tier = _tier(counts["lightning"])
     if lightning_tier == 7:
         result.lightning_proc_chance, result.lightning_burst_flat, result.lightning_chain_chance = 0.8, 20, 0.3
     elif lightning_tier == 5:
@@ -118,7 +130,7 @@ def compute_synergy(tags: list[str]) -> SynergyResult:
     elif lightning_tier == 3:
         result.lightning_proc_chance, result.lightning_burst_flat = 0.4, 8
 
-    bleed_tier = _tier(tags.count("bleed"))
+    bleed_tier = _tier(counts["bleed"])
     if bleed_tier == 7:
         result.bleed_proc_chance, result.bleed_tick_flat, result.bleed_decays = 0.8, 14, False
     elif bleed_tier == 5:

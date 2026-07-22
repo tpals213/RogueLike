@@ -491,40 +491,54 @@ ACTS = {
 
 
 # ---------------------------------------------------------------------------
-# 유물 풀 (엘리트/보스/축복/이벤트 보상으로 랜덤 지급) — 효과는 설명 텍스트 수준,
-# 전투 로직 연동은 추후 작업 대상
+# 유물 풀 (엘리트/보스/축복/이벤트 보상으로 랜덤 지급) — 효과는 game/relics.py에서 전투 로직에 연동됨
 # ---------------------------------------------------------------------------
 
 RELIC_POOL = [
-    # 일반 유물 - 소소한 효과
-    Relic(name="낡은 지갑", description="전투 승리 시 골드 +5", effect="worn_wallet"),
-    Relic(name="여행자의 부적", description="전투 시작 시 HP 5% 회복", effect="travelers_charm"),
-    Relic(name="무딘 숫돌", description="물리공격력 +5%", effect="dull_whetstone"),
-    Relic(name="낡은 지팡이", description="마법공격력 +5%", effect="worn_staff"),
-    # 시너지 보조형
-    Relic(name="독아의 인장", description="독 시너지 중독 부여 확률 +10%p", effect="poison_proc_boost"),
-    Relic(name="화염 심장", description="화염 시너지 화상 부여 스택 +5", effect="fire_stack_boost"),
-    Relic(name="광전사의 표식", description="버서커 시너지 흡혈 확률 +10%p", effect="berserker_lifesteal_boost"),
-    Relic(name="서리 파편", description="얼음 상태이상 행동불가 확률 +10%p", effect="ice_fail_boost"),
-    Relic(name="현자의 돌", description="마나 시너지 보호막 재생 확률 +10%p", effect="mana_shield_boost"),
-    # 강력형 (부작용 없음)
-    Relic(name="불굴의 심장", description="전투 중 첫 피격 데미지 무효", effect="first_hit_immune"),
-    Relic(name="거인의 뼈", description="최대 HP +30 (이번 런 한정)", effect="max_hp_up"),
-    # 하이리스크 강력형 (부작용 동반)
-    Relic(name="악마의 계약", description="물공/마공 +25%, 대신 매턴 시작 시 현재 HP 3% 자해", effect="demons_pact", image="relics/demons_pact.png"),
-    Relic(name="폭주의 흉갑", description="물공/마공 +30%, 대신 물방/마방 -20%", effect="berserk_plate"),
-    Relic(name="도박사의 주사위", description="크리티컬 확률 +20%p, 대신 크리티컬 데미지 -25%p", effect="gamblers_dice"),
-    Relic(name="검은 낙인", description="스킬 쿨타임 -1, 대신 최대 HP -15%", effect="black_brand"),
-    # 일반 유물 추가
-    Relic(name="튼튼한 허리띠", description="물방/마방 +5%", effect="sturdy_belt"),
-    Relic(name="행운의 부적", description="크리티컬 확률 +5%p", effect="lucky_charm"),
-    # 시너지 무관 스탯 강화형 (태그 투자 없이도 적용)
-    Relic(name="야수의 발톱", description="물리공격력 +8% (버서커 시너지 무관)", effect="beast_claw"),
-    Relic(name="현자의 렌즈", description="마법공격력 +8% (마나 시너지 무관)", effect="sage_lens"),
-    # 하이리스크 강력형 추가
-    Relic(name="피의 서약", description="크리티컬 데미지 +40%p, 대신 최대 HP -20%", effect="blood_oath"),
-    Relic(name="구원의 반지", description="전투 시작 시 HP 20% 회복, 대신 매턴 시작 시 HP 1% 자해", effect="ring_of_salvation"),
+    # === 일반(common) - 소소하고 안정적인 효과 ===
+    Relic(name="낡은 지갑", description="전투 승리 시 골드 +5", effect="worn_wallet", rarity="common"),
+    Relic(name="여행자의 부적", description="전투 시작 시 HP 5% 회복", effect="travelers_charm", rarity="common"),
+    Relic(name="무딘 숫돌", description="물리공격력 +5%", effect="dull_whetstone", rarity="common"),
+    Relic(name="낡은 지팡이", description="마법공격력 +5%", effect="worn_staff", rarity="common"),
+    Relic(name="튼튼한 허리띠", description="물방/마방 +5%", effect="sturdy_belt", rarity="common"),
+    Relic(name="행운의 부적", description="크리티컬 확률 +5%p", effect="lucky_charm", rarity="common"),
+    Relic(name="독아의 인장", description="독 시너지 중독 부여 확률 +10%p", effect="poison_proc_boost", rarity="common"),
+    Relic(name="화염 심장", description="화염 시너지 화상 부여 스택 +5", effect="fire_stack_boost", rarity="common"),
+    Relic(name="광전사의 표식", description="버서커 시너지 흡혈 확률 +10%p", effect="berserker_lifesteal_boost", rarity="common"),
+    Relic(name="서리 파편", description="얼음 상태이상 행동불가 확률 +10%p", effect="ice_fail_boost", rarity="common"),
+    Relic(name="현자의 돌", description="마나 시너지 보호막 재생 확률 +10%p", effect="mana_shield_boost", rarity="common"),
+    Relic(name="가벼운 신발", description="공격속도 +0.10", effect="light_boots", rarity="common"),
+    Relic(name="동전 주머니", description="몬스터 처치 시 획득 골드 +10%", effect="coin_pouch", rarity="common"),
+    # === 희귀(rare) - 중간 강도, 개성 있는 효과 ===
+    Relic(name="야수의 발톱", description="물리공격력 +8% (버서커 시너지 무관)", effect="beast_claw", rarity="rare"),
+    Relic(name="현자의 렌즈", description="마법공격력 +8% (마나 시너지 무관)", effect="sage_lens", rarity="rare"),
+    Relic(name="불굴의 심장", description="전투 중 첫 피격 데미지 무효", effect="first_hit_immune", rarity="rare"),
+    Relic(name="거인의 뼈", description="최대 HP +30 (이번 런 한정)", effect="max_hp_up", rarity="rare"),
+    Relic(name="도박사의 주사위", description="크리티컬 확률 +20%p, 대신 크리티컬 데미지 -25%p", effect="gamblers_dice", rarity="rare"),
+    Relic(name="검은 낙인", description="스킬 쿨타임 -1초, 대신 최대 HP -15%", effect="black_brand", rarity="rare"),
+    Relic(name="구원의 반지", description="전투 시작 시 HP 20% 회복, 대신 매턴 시작 시 HP 1% 자해", effect="ring_of_salvation", rarity="rare"),
+    Relic(name="질풍의 목걸이", description="공격속도 +0.25", effect="windwalker_amulet", rarity="rare"),
+    Relic(name="탐욕의 저울", description="몬스터 처치 시 획득 골드 +25%", effect="greed_scale", rarity="rare"),
+    Relic(name="적응하는 인장", description="보유 시너지 중 가장 높은 것 +1 (장비를 바꾸면 그때그때 다시 계산됨)", effect="adaptive_signet", rarity="rare"),
+    Relic(name="가시 갑주", description="피격 시 받은 피해의 8% 반사", effect="thorn_plate", rarity="rare"),
+    # === 유니크(unique) - 강력하고 빌드를 정의하는 효과 ===
+    Relic(name="악마의 계약", description="물공/마공 +25%, 대신 매턴 시작 시 현재 HP 3% 자해", effect="demons_pact", rarity="unique", image="relics/demons_pact.png"),
+    Relic(name="폭주의 흉갑", description="물공/마공 +30%, 대신 물방/마방 -20%", effect="berserk_plate", rarity="unique"),
+    Relic(name="피의 서약", description="크리티컬 데미지 +40%p, 대신 최대 HP -20%", effect="blood_oath", rarity="unique"),
+    Relic(name="침묵의 룬", description="스킬을 사용할 수 없는 대신 물공/마공 +40%", effect="silent_rune", rarity="unique"),
+    Relic(name="불사의 부적", description="전투당 1회 부활 (부활 시 HP 50%로 회복)", effect="undying_charm", rarity="unique"),
+    Relic(name="마력 증폭 건틀릿", description="마법공격력의 60%를 물리공격력에 추가", effect="arcane_amplifier", rarity="unique"),
+    Relic(name="비전 각인 건틀릿", description="물리공격력의 60%를 마법공격력에 추가", effect="arcane_engraving", rarity="unique"),
+    Relic(name="폭풍우의 심장", description="공격속도 +0.40, 대신 물방/마방 -15%", effect="tempest_heart", rarity="unique"),
+    Relic(name="황금의 손", description="몬스터 처치 시 획득 골드 +50%", effect="golden_touch", rarity="unique"),
 ]
+
+# 1/2/3장 엘리트 처치 보상은 이 등급으로 고정 (밸런싱: 장이 오를수록 강한 유물)
+ELITE_RELIC_RARITY_BY_ACT = {1: "common", 2: "rare", 3: "unique"}
+
+
+def relics_by_rarity(rarity: str) -> list[Relic]:
+    return [r for r in RELIC_POOL if r.rarity == rarity]
 
 
 # ---------------------------------------------------------------------------
@@ -594,6 +608,21 @@ SAMPLE_ITEMS = [
     Item(name="심연의 전신갑주", slot="armor", rarity="legendary", tags=["lightning", "bleed", "poison"], stat_bonus={"def_phys": 13, "def_magic": 13}),
     Item(name="용맹의 성갑", slot="armor", rarity="legendary", tags=["berserker", "fire", "ice"], stat_bonus={"def_phys": 14, "def_magic": 12}),
     Item(name="대현자의 로브", slot="armor", rarity="legendary", tags=["mana", "lightning", "bleed"], stat_bonus={"def_phys": 12, "def_magic": 14}),
+    # 하의 - 공격속도 (일반4 / 희귀4 / 유니크3 / 레전더리3)
+    Item(name="가죽 각반", slot="pants", rarity="common", tags=["poison"], stat_bonus={"atk_speed": 0.04}),
+    Item(name="강철 각반", slot="pants", rarity="common", tags=["berserker"], stat_bonus={"atk_speed": 0.05}),
+    Item(name="서리 각반", slot="pants", rarity="common", tags=["ice"], stat_bonus={"atk_speed": 0.04}),
+    Item(name="감전 각반", slot="pants", rarity="common", tags=["lightning"], stat_bonus={"atk_speed": 0.05}),
+    Item(name="사냥꾼의 각반", slot="pants", rarity="rare", tags=["poison"], stat_bonus={"atk_speed": 0.09}),
+    Item(name="화염 각반", slot="pants", rarity="rare", tags=["fire"], stat_bonus={"atk_speed": 0.10}),
+    Item(name="감전의 각반", slot="pants", rarity="rare", tags=["lightning"], stat_bonus={"atk_speed": 0.10}),
+    Item(name="출혈의 각반", slot="pants", rarity="rare", tags=["bleed"], stat_bonus={"atk_speed": 0.09}),
+    Item(name="폭풍질주 각반", slot="pants", rarity="unique", tags=["lightning", "berserker"], stat_bonus={"atk_speed": 0.16}),
+    Item(name="유혈질주 각반", slot="pants", rarity="unique", tags=["bleed", "poison"], stat_bonus={"atk_speed": 0.15}),
+    Item(name="서리감전 각반", slot="pants", rarity="unique", tags=["ice", "lightning"], stat_bonus={"atk_speed": 0.17}),
+    Item(name="광휘의 각반", slot="pants", rarity="legendary", tags=["lightning", "bleed", "berserker"], stat_bonus={"atk_speed": 0.24}),
+    Item(name="삼재 각반", slot="pants", rarity="legendary", tags=["fire", "ice", "poison"], stat_bonus={"atk_speed": 0.23}),
+    Item(name="폭군의 각반", slot="pants", rarity="legendary", tags=["berserker", "fire", "lightning"], stat_bonus={"atk_speed": 0.25}),
     # 신발 - 크리율/크리데미지 (일반4 / 희귀4 / 유니크3 / 레전더리3)
     Item(name="사냥꾼의 부츠", slot="boots", rarity="common", tags=["berserker"], stat_bonus={"crit_chance": 0.05}),
     Item(name="독안개 신발", slot="boots", rarity="common", tags=["poison"], stat_bonus={"crit_chance": 0.04}),

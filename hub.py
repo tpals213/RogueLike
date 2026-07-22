@@ -13,7 +13,7 @@ from game.save_system import load_meta, save_meta
 
 SAVE_PATH = Path(__file__).parent / "saves" / "meta_save.json"
 
-_LINE_LABEL = {"hp": "체력", "atk_phys": "물리공격력", "atk_magic": "마법공격력"}
+_LINE_LABEL = {"hp": "체력", "atk": "공격력", "def": "방어력", "gold": "재화"}
 
 
 def render_tree(owned: set) -> None:
@@ -26,7 +26,7 @@ def render_tree(owned: set) -> None:
                 status = "구매 가능"
             else:
                 status = "잠김 (이전 단계 필요)"
-            print(f"  {rank.id}: {rank.name} (+{rank.amount} {rank.stat}) - {rank.cost} 다이아 [{status}]")
+            print(f"  {rank.id} ({rank.tier}단계) {rank.name}: {rank.desc} - {rank.cost} 다이아 [{status}]")
 
 
 def main() -> None:

@@ -13,6 +13,7 @@ class Stats:
     def_magic: int
     crit_chance: float  # 0.0 ~ 1.0
     crit_damage: float  # 1.5 = 150%
+    atk_speed: float = 1.0  # 초당 공격 횟수. 1.0 = 1초에 1대 (기존 콘텐츠 기본값, 턴제 시절 페이스와 동일)
 
     def copy(self) -> "Stats":
         return Stats(**vars(self))
@@ -21,15 +22,15 @@ class Stats:
 @dataclass
 class Skill:
     name: str
-    cooldown: int  # 턴 단위
+    cooldown: float  # 초 단위 (기존 "턴" 수치를 그대로 초로 재해석)
     damage_multiplier: float
     damage_type: str  # "phys" or "magic"
     hits: int = 1  # 다단히트 스킬 (예: 도적 연속 베기)
 
 
 # 슬롯: helmet(투구) / left_hand(왼손, 방패or무기) / right_hand(오른손, 무기)
-# / armor(갑옷) / boots(신발) / necklace(목걸이) / ring(반지)
-EQUIPMENT_SLOTS = ["helmet", "left_hand", "right_hand", "armor", "boots", "necklace", "ring"]
+# / armor(갑옷) / pants(하의) / boots(신발) / necklace(목걸이) / ring(반지)
+EQUIPMENT_SLOTS = ["helmet", "left_hand", "right_hand", "armor", "pants", "boots", "necklace", "ring"]
 
 # 등급별 보유 시너지 태그 개수 (일반 1개 / 희귀 1개 / 유니크 2개 / 레전더리 3개)
 RARITY_TAG_COUNT = {"common": 1, "rare": 1, "unique": 2, "legendary": 3}
@@ -50,6 +51,7 @@ class Relic:
     name: str
     description: str
     effect: str  # 코드에서 참조할 효과 식별자 (예: "poison_tick_half", "first_hit_immune", "max_hp_up")
+    rarity: str = "common"  # "common" / "rare" / "unique" - 1/2/3장 엘리트 보상 및 상점 등급표에 사용
     image: Optional[str] = None  # assets/images/ 기준 상대 경로, 없으면 None (그래픽 미제작)
 
 
@@ -62,6 +64,7 @@ class Character:
     equipment: dict[str, Item] = field(default_factory=dict)
     relics: list[Relic] = field(default_factory=list)
     image: Optional[str] = None  # assets/images/ 기준 상대 경로, 없으면 None (그래픽 미제작)
+    trait_mods: object = None  # game.hub.TraitModifiers — 런 시작 시 1회 계산해 부여 (순환참조 방지로 느슨한 타입)
 
     def equip(self, item: Item) -> None:
         self.equipment[item.slot] = item

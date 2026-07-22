@@ -30,11 +30,19 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.widget import Widget
 
 from game.combat import compute_effective_stats, simulate_battle, simulate_group_battle
-from game.content import ACTS, RELIC_POOL, SAMPLE_ITEMS, STARTER_ITEM_NAMES, make_rogue
-from game.hub import TRAIT_TREE, apply_unlocked_traits, get_trait, is_purchasable
+from game.content import ACTS, ELITE_RELIC_RARITY_BY_ACT, RELIC_POOL, SAMPLE_ITEMS, STARTER_ITEM_NAMES, make_rogue, relics_by_rarity
+from game.hub import (
+    TRAIT_TREE,
+    apply_gold_kill_bonus,
+    apply_unlocked_traits,
+    compute_trait_modifiers,
+    get_trait,
+    grant_bonus_starting_items,
+    is_purchasable,
+)
 from game.mapgen import generate_act_map
 from game.models import EQUIPMENT_SLOTS
-from game.relics import compute_relic_modifiers
+from game.relics import apply_relic_gold_bonus, compute_relic_modifiers
 from game.save_system import load_meta, save_meta
 from game.shop import (
     REROLL_COST,
@@ -183,14 +191,14 @@ TYPE_LABEL = {
 }
 SLOT_LABEL = {
     "helmet": "투구", "left_hand": "왼손", "right_hand": "오른손", "armor": "갑옷",
-    "boots": "신발", "necklace": "목걸이", "ring": "반지",
+    "pants": "하의", "boots": "신발", "necklace": "목걸이", "ring": "반지",
 }
 STAT_LABEL = {
     "hp": "HP", "atk_phys": "물공", "atk_magic": "마공",
     "def_phys": "물방", "def_magic": "마방", "crit_chance": "크리율",
-    "crit_damage": "크리뎀", "cooldown_reduction": "쿨감", "shield": "보호막",
+    "crit_damage": "크리뎀", "cooldown_reduction": "쿨감", "shield": "보호막", "atk_speed": "공속",
 }
-_HUB_LINE_LABEL = {"hp": "체력", "atk_phys": "물리공격력", "atk_magic": "마법공격력"}
+_HUB_LINE_LABEL = {"hp": "체력", "atk": "공격력", "def": "방어력", "gold": "재화"}
 
 BLESSING_OPTIONS = [
     ("item", "무작위 아이템 획득 (빈 슬롯에 자동 장착)"),
@@ -585,7 +593,8 @@ class GameScreen(BoxLayout):
             f"마법방어력 {eff_stats.def_magic} (기본 {base.def_magic})",
             f"크리티컬 확률 {eff_stats.crit_chance * 100:.0f}% (기본 {base.crit_chance * 100:.0f}%)",
             f"크리티컬 데미지 {eff_stats.crit_damage * 100:.0f}% (기본 {base.crit_damage * 100:.0f}%)",
-            f"스킬 쿨다운 {skill_cd}턴",
+            f"공격속도 {eff_stats.atk_speed:.2f} (기본 {base.atk_speed:.2f})",
+            f"스킬 쿨다운 {skill_cd:.1f}초",
         ]:
             self._add_wrapping_label(col, line)
 
@@ -713,7 +722,8 @@ class GameScreen(BoxLayout):
                         status = "구매 가능"
                     else:
                         status = "잠김 (이전 단계 필요)"
-                    lines.append(f"  {rank.name} (+{rank.amount} {rank.stat}) - {rank.cost} 다이아 [{status}]")
+                    indent = "  " * rank.tier
+                    lines.append(f"{indent}{rank.tier}단계 {rank.name}: {rank.desc} - {rank.cost} 다이아 [{status}]")
                     if status == "구매 가능":
                         options.append(f"{rank.name} 구매 ({rank.cost} 다이아)")
                         option_ids.append(rank.id)
@@ -746,14 +756,19 @@ class GameScreen(BoxLayout):
         self.meta = load_meta(self.save_path)
         self.character = make_rogue()
         apply_unlocked_traits(self.character, self.meta["unlocked_traits"])
+        self.character.trait_mods = compute_trait_modifiers(self.meta["unlocked_traits"])
         for item in SAMPLE_ITEMS:
             if item.name in STARTER_ITEM_NAMES:
                 self.character.equip(item)
+        if self.character.trait_mods.bonus_starting_items:
+            granted = grant_bonus_starting_items(self.character, self.character.trait_mods.bonus_starting_items)
+            for item in granted:
+                self._toast(f"[특성: 여행의 준비] {item.name} 추가 장착")
 
         self.state = {
             "hp": self._effective_max_hp(),
             "shield": 0,
-            "gold": 0,
+            "gold": self.character.trait_mods.bonus_starting_gold,
             "diamond": 0,
             "trivialize": 0,
             "alive": True,
@@ -960,7 +975,8 @@ class GameScreen(BoxLayout):
                 self.state["trivialize"] = 3
                 self._toast("[축복] 이후 3번의 전투는 적 HP가 1로 시작합니다.")
             elif effect == "relic":
-                relic = random.choice(RELIC_POOL)
+                pool = relics_by_rarity(ELITE_RELIC_RARITY_BY_ACT[self.state["act"]])
+                relic = random.choice(pool)
                 self.character.relics.append(relic)
                 self._toast(f"[축복] 유물 획득: {relic.name}")
             elif effect == "maxhp":
@@ -995,7 +1011,8 @@ class GameScreen(BoxLayout):
         self.set_content(self._build_choice_widget("우물 - 하나를 선택하세요", labels, on_choice))
 
     def resolve_relic_room(self):
-        relic = random.choice(RELIC_POOL)
+        pool = relics_by_rarity(ELITE_RELIC_RARITY_BY_ACT[self.state["act"]])
+        relic = random.choice(pool)
         labels = [f"{relic.name} 받기 - {relic.description}", "받지 않고 넘어가기"]
         icons = [relic.image, None]
 
@@ -1073,8 +1090,15 @@ class GameScreen(BoxLayout):
         random.choice(events)(self._after_node)
 
     def resolve_shop(self):
-        offer = generate_shop_offer(self.character, self.state["act"])
+        trait_mods = self.character.trait_mods
+        offer = generate_shop_offer(
+            self.character, self.state["act"],
+            discount_percent=trait_mods.shop_discount_percent,
+            rarity_bonus=trait_mods.rarity_bonus_percent,
+            bonus_relic_slots=trait_mods.shop_bonus_relic_slots,
+        )
         self._shop_entries = build_shop_entries(offer)
+        self._shop_free_rerolls = trait_mods.shop_free_reroll
         self._render_shop()
 
     def _render_shop(self):
@@ -1095,8 +1119,10 @@ class GameScreen(BoxLayout):
                     f"{format_stat_bonus(obj.stat_bonus)} [{format_tags(obj.tags)}] - {entry['price']}G"
                 )
             else:
-                labels.append(f"[유물] {obj.name} - {obj.description} - {entry['price']}G")
-        labels.append(f"리롤 (진열 전체를 새로 채움) - {REROLL_COST}G")
+                rarity_kr_relic = RARITY_LABEL[obj.rarity]
+                labels.append(f"[유물/{rarity_kr_relic}] {obj.name} - {obj.description} - {entry['price']}G")
+        reroll_label = "무료" if self._shop_free_rerolls else f"{REROLL_COST}G"
+        labels.append(f"리롤 (진열 전체를 새로 채움) - {reroll_label}")
         labels.append("나가기")
         icons.extend([None, None])
 
@@ -1105,12 +1131,21 @@ class GameScreen(BoxLayout):
                 self._after_node()
                 return
             if idx == len(labels) - 2:
-                if self.state["gold"] < REROLL_COST:
-                    self._toast("[상점] 골드가 부족합니다.")
-                else:
+                trait_mods = self.character.trait_mods
+                if self._shop_free_rerolls > 0:
+                    self._shop_free_rerolls -= 1
+                elif self.state["gold"] >= REROLL_COST:
                     self.state["gold"] -= REROLL_COST
-                    reroll_all_entries(entries, self.state["act"])
-                    self._toast(f"[상점] 리롤 완료 (남은 골드 {self.state['gold']}G)")
+                else:
+                    self._toast("[상점] 골드가 부족합니다.")
+                    self._render_shop()
+                    return
+                reroll_all_entries(
+                    entries, self.state["act"],
+                    discount_percent=trait_mods.shop_discount_percent,
+                    rarity_bonus=trait_mods.rarity_bonus_percent,
+                )
+                self._toast(f"[상점] 리롤 완료 (남은 골드 {self.state['gold']}G)")
                 self._render_shop()
                 return
 
@@ -1179,10 +1214,10 @@ class GameScreen(BoxLayout):
 
             self.state["nodes_cleared"] += 1
 
-            gold_bonus = compute_relic_modifiers(self.character).gold_per_win
-            if gold_bonus:
-                self.state["gold"] += gold_bonus
-                self._toast(f"[유물] 승리 보너스 골드 +{gold_bonus}")
+            relic_mods = compute_relic_modifiers(self.character)
+            if relic_mods.gold_per_win:
+                self.state["gold"] += relic_mods.gold_per_win
+                self._toast(f"[유물] 승리 보너스 골드 +{relic_mods.gold_per_win}")
 
             def finish_rewards():
                 if overkill:
@@ -1192,15 +1227,17 @@ class GameScreen(BoxLayout):
                 on_done()
 
             if tier == "normal":
-                self.state["gold"] += GOLD_BASE["normal"] * act * len(monsters)
+                base_gold = apply_gold_kill_bonus(self.character.trait_mods, GOLD_BASE["normal"] * act * len(monsters))
+                self.state["gold"] += apply_relic_gold_bonus(relic_mods, base_gold)
                 self.state["diamond"] += DIAMOND_BASE["normal"] * act * len(monsters)
                 self._choose_item_reward(act, False, finish_rewards)
             elif tier == "elite":
-                self.state["gold"] += GOLD_BASE["elite"] * act
+                base_gold = apply_gold_kill_bonus(self.character.trait_mods, GOLD_BASE["elite"] * act)
+                self.state["gold"] += apply_relic_gold_bonus(relic_mods, base_gold)
                 self.state["diamond"] += DIAMOND_BASE["elite"] * act
 
                 def after_item():
-                    relic = random.choice(RELIC_POOL)
+                    relic = random.choice(relics_by_rarity(ELITE_RELIC_RARITY_BY_ACT[act]))
                     self.character.relics.append(relic)
                     self._toast(f"[유물 획득] {relic.name} - {relic.description}")
                     finish_rewards()
@@ -1220,7 +1257,7 @@ class GameScreen(BoxLayout):
         choices = []
         seen_names = set()
         for _ in range(3):
-            rarity = roll_item_rarity(act, elite=elite)
+            rarity = roll_item_rarity(act, elite=elite, rarity_bonus=self.character.trait_mods.rarity_bonus_percent)
             candidates = [i for i in SAMPLE_ITEMS if i.rarity == rarity and i.name not in seen_names]
             if not candidates:
                 candidates = [i for i in SAMPLE_ITEMS if i.name not in seen_names] or SAMPLE_ITEMS
@@ -1249,7 +1286,8 @@ class GameScreen(BoxLayout):
         self.set_content(self._build_choice_widget("아이템 선택 - 하나를 고르세요", labels, on_choice, icons=icons))
 
     def _choose_boss_relic(self, on_done):
-        choices = random.sample(RELIC_POOL, min(3, len(RELIC_POOL)))
+        pool = relics_by_rarity(ELITE_RELIC_RARITY_BY_ACT[self.state["act"]])
+        choices = random.sample(pool, min(3, len(pool)))
         labels = [f"{r.name} - {r.description}" for r in choices]
         icons = [r.image for r in choices]
 

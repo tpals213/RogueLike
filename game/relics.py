@@ -29,6 +29,15 @@ class RelicModifiers:
     self_damage_percent_per_turn: float = 0.0
     heal_on_start_percent: float = 0.0
     gold_per_win: int = 0
+    gold_percent_bonus: float = 0.0
+    atk_speed_bonus: float = 0.0
+    synergy_boost_highest: int = 0
+    skill_sealed: bool = False
+    revive_charges: int = 0  # 전투당 1회 (특성의 revive_charges와 달리 런 전체가 아니라 매 전투 리셋)
+    revive_heal_percent: float = 0.5
+    thorns_percent: float = 0.0
+    magic_to_phys_percent: float = 0.0
+    phys_to_magic_percent: float = 0.0
 
 
 def compute_relic_modifiers(character) -> RelicModifiers:
@@ -102,4 +111,48 @@ def compute_relic_modifiers(character) -> RelicModifiers:
             mods.heal_on_start_percent += 0.20
             mods.self_damage_percent_per_turn += 0.01
 
+        # --- 공속 유물 ---
+        elif effect == "light_boots":
+            mods.atk_speed_bonus += 0.10
+        elif effect == "windwalker_amulet":
+            mods.atk_speed_bonus += 0.25
+
+        # --- 골드 유물 ---
+        elif effect == "coin_pouch":
+            mods.gold_percent_bonus += 0.10
+        elif effect == "greed_scale":
+            mods.gold_percent_bonus += 0.25
+        elif effect == "golden_touch":
+            mods.gold_percent_bonus += 0.50
+
+        # --- 시너지 동적 강화 (장비 태그 변경 시 매 전투 시작마다 새로 계산됨) ---
+        elif effect == "adaptive_signet":
+            mods.synergy_boost_highest += 1
+
+        # --- 방어형 ---
+        elif effect == "thorn_plate":
+            mods.thorns_percent += 0.08
+
+        # --- 유니크: 빌드를 정의하는 강력 효과 ---
+        elif effect == "silent_rune":
+            mods.skill_sealed = True
+            mods.atk_phys_mult *= 1.4
+            mods.atk_magic_mult *= 1.4
+        elif effect == "undying_charm":
+            mods.revive_charges += 1
+            mods.revive_heal_percent = max(mods.revive_heal_percent, 0.5)
+        elif effect == "arcane_amplifier":
+            mods.magic_to_phys_percent += 0.6
+        elif effect == "arcane_engraving":
+            mods.phys_to_magic_percent += 0.6
+        elif effect == "tempest_heart":
+            mods.atk_speed_bonus += 0.40
+            mods.def_phys_mult *= 0.85
+            mods.def_magic_mult *= 0.85
+
     return mods
+
+
+def apply_relic_gold_bonus(mods: RelicModifiers, gold: int) -> int:
+    """동전 주머니/탐욕의 저울/황금의 손 등 처치 골드 %증가 유물을 보상 골드에 반영."""
+    return int(gold * (1 + mods.gold_percent_bonus))
